@@ -1,0 +1,43 @@
+# HAOS 加载项镜像：BUILD_FROM 由 Supervisor / 官方构建器按架构注入（见 build.yaml）。
+ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.20
+ARG NODE_IMAGE=node:20-alpine
+
+# ============================================================
+# Stage 1: 构建前端 (Vite + React + TypeScript)
+# ============================================================
+FROM ${NODE_IMAGE} AS frontend
+
+WORKDIR /build
+
+# 先复制依赖描述文件，利用 Docker 层缓存
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+
+# 复制源码并构建（base 为 ./，资源走相对路径以兼容 Ingress 子路径）
+COPY . .
+RUN npm run build
+
+# ============================================================
+# Stage 2: 运行时（HA 基础镜像 + Python 后端 + 静态文件）
+# ============================================================
+FROM ${BUILD_FROM}
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    HOME_CONSOLE_HOST=0.0.0.0 \
+    HOME_CONSOLE_PORT=8765 \
+    HOME_CONSOLE_DATA=/data \
+    HOME_CONSOLE_STATIC=/app/dist
+
+# cryptography 用 Alpine 预编译包，避免拉 Rust 工具链；aiohttp 有 musl 轮子。
+RUN apk add --no-cache python3 py3-pip py3-cryptography \
+    && pip3 install --no-cache-dir --break-system-packages "aiohttp>=3.9"
+
+WORKDIR /app/server
+
+COPY server/ ./
+COPY --from=frontend /build/dist /app/dist
+COPY run.sh /
+RUN chmod a+x /run.sh
+
+CMD ["/run.sh"]

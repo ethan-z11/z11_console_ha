@@ -1,0 +1,12 @@
+[project]
+name = "home-console-server"
+version = "0.1.0"
+description = "家庭控制台后端：保管 HA 令牌与管理密码，转发 HA 状态并按白名单代发服务调用。"
+requires-python = ">=3.11"
+dependencies = [
+  "aiohttp>=3.9",
+  "cryptography>=42",
+]
+
+[tool.uv]
+package = false

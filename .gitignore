@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.vite/
+
+# ---- Docker Compose ----
+# 数据目录（含账号、加密令牌、布局、审计日志，绝不能提交）
+data/
+# 本地环境变量（含密钥）
+.env
+.env.*
+!.env.example

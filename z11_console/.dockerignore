@@ -1,0 +1,36 @@
+# ---- Node ----
+node_modules
+.vite
+dist
+
+# ---- Python ----
+server/.venv
+server/__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+
+# ---- 数据目录（由卷挂载提供，不打包进镜像）----
+server/data
+
+# ---- Git / 编辑器 ----
+.git
+.gitignore
+.gitattributes
+.vscode
+.idea
+*.swp
+
+# ---- Docker 自身 ----
+Dockerfile
+docker-compose.yml
+docker-compose.*.yml
+.dockerignore
+.env
+.env.*
+!.env.example
+
+# ---- 文档 / 工具 ----
+*.md
+tools
+scripts
