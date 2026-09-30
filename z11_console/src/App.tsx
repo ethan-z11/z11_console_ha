@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
-import { Eye, Pencil, Snowflake, Sun, Power, RotateCcw, Settings, Star } from 'lucide-react';
+import { Eye, Maximize, Minimize, Pencil, Snowflake, Sun, Power, RotateCcw, Settings, Star } from 'lucide-react';
 import { AdaptiveGrid } from './components/AdaptiveGrid';
 import { ActiveDevicesDialog } from './components/ActiveDevicesDialog';
 import type { ActiveListRequest } from './components/ActiveDevicesDialog';
@@ -24,6 +24,7 @@ import { allowedSizesForDevice, favoriteIds, favoriteSizeKey, fromServerLayout, 
 import { getRoomDevices, isClimate, isLit, isRunning, sortRunning } from './selectors';
 import { sceneDisplayName, sceneTargetService } from './haAdapter';
 import { formatDate, formatTime, homeGreeting, useNow } from './time';
+import { isIngress, kioskOn, restoreKiosk, setKiosk } from './kiosk';
 import type { Device, DeviceActions, LayoutState, Room, TileSize } from './types';
 import { useConsole } from './useConsole';
 import { readOnlyActions, useHome } from './useHome';
@@ -277,6 +278,15 @@ function Console({ authenticated, onLogout, onOpenSetup }: ConsoleProps) {
     if (page !== 'settings') openSettings();
   }
 
+  /** HAOS Ingress 沉浸模式：隐藏 HA 自身的侧边栏与顶栏；页面加载时恢复上次状态。 */
+  const [kiosk, setKioskState] = useState(kioskOn());
+  useEffect(() => { restoreKiosk(); }, []);
+  function toggleKiosk() {
+    const next = !kiosk;
+    setKiosk(next);
+    setKioskState(next);
+  }
+
   function openSettings() {
     setEnterDirection(0);
     leaveLayoutEditing();
@@ -417,6 +427,7 @@ function Console({ authenticated, onLogout, onOpenSetup }: ConsoleProps) {
             {!canControl && <span className="demo-flag demo-flag--readonly"><Eye size={14} />只读模式</span>}
             <ConnectionBadge quiet={page !== 'home'} connected={server.connected} status={server.status} staleSince={server.staleSince} offlineSince={server.offlineSince} now={now} />
             {!live && <button type="button" className="text-button" onClick={resetDemo} aria-label="重置演示设备状态"><RotateCcw size={15} />重置演示</button>}
+            {isIngress && <button type="button" className="icon-button" onClick={toggleKiosk} aria-pressed={kiosk} aria-label={kiosk ? '退出沉浸模式' : '沉浸模式'} title={kiosk ? '退出沉浸模式（显示 HA 侧边栏与顶栏）' : '沉浸模式（隐藏 HA 侧边栏与顶栏）'}>{kiosk ? <Minimize size={18} /> : <Maximize size={18} />}</button>}
             <button type="button" className="icon-button hero__settings" onClick={requestSettings} aria-current={page === 'settings' ? 'page' : undefined} aria-label="设置" title="设置"><Settings size={18} /></button>
           </div>
         </div>
