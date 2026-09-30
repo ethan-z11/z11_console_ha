@@ -15,27 +15,47 @@ ha-sidebar { display: none !important; }
 :host { --header-height: 0px !important; --mdc-drawer-width: 0px !important; }
 `;
 
-function mainShadowRoot(): ShadowRoot | null {
+const PANEL_CSS = `
+:host > header { display: none !important; }
+`;
+
+/** 需要注入样式的 shadowRoot：桌面端主框架 + 移动端嵌套在 partial-panel-resolver 里的面板。 */
+function shadowRoots(): ShadowRoot[] {
   try {
     const ha = parent.document.querySelector('home-assistant');
-    return (ha?.shadowRoot?.querySelector('home-assistant-main') as Element | undefined)?.shadowRoot ?? null;
+    const main = ha?.shadowRoot?.querySelector('home-assistant-main') as Element | undefined;
+    const resolver = main?.shadowRoot?.querySelector('partial-panel-resolver') as Element | undefined;
+    const panel = resolver?.shadowRoot?.querySelector('ha-panel-iframe, ha-panel-app') as Element | undefined;
+    const roots = [main?.shadowRoot, resolver?.shadowRoot, panel?.shadowRoot];
+    return roots.filter((root): root is ShadowRoot => Boolean(root));
   } catch {
-    return null;
+    return [];
   }
+}
+
+function inject(root: ShadowRoot, css: string): void {
+  let style = root.getElementById(STYLE_ID);
+  if (!style) {
+    style = parent.document.createElement('style');
+    style.id = STYLE_ID;
+    root.appendChild(style);
+  }
+  style.textContent = css;
+}
+
+function remove(root: ShadowRoot): void {
+  root.getElementById(STYLE_ID)?.remove();
 }
 
 function apply(on: boolean): void {
   try {
-    const root = mainShadowRoot();
-    if (!root) return;
-    const style = root.getElementById(STYLE_ID);
-    if (on && !style) {
-      const el = parent.document.createElement('style');
-      el.id = STYLE_ID;
-      el.textContent = CSS;
-      root.appendChild(el);
-    } else if (!on && style) {
-      style.remove();
+    const roots = shadowRoots();
+    if (!roots.length) return;
+    if (on) {
+      inject(roots[0], CSS);
+      roots.slice(1).forEach((r) => inject(r, PANEL_CSS));
+    } else {
+      roots.forEach(remove);
     }
     parent.dispatchEvent(new Event('resize'));
   } catch {
