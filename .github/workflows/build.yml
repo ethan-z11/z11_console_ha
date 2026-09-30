@@ -1,0 +1,66 @@
+name: 构建并发布加载项镜像
+
+# 推送涉及加载项目录的改动即重建；版本号取自 z11_console/config.yaml。
+# 产物：ghcr.io/ethan-z11/{arch}-z11_console_ha:<版本>（config.yaml 的 image 字段引用同一命名）。
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'z11_console/**'
+      - '.github/workflows/build.yml'
+  workflow_dispatch:
+
+env:
+  ARCHITECTURES: '["amd64", "aarch64"]'
+  IMAGE_NAME: z11_console_ha
+
+permissions:
+  contents: read
+
+jobs:
+  init:
+    name: 准备构建矩阵
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: 生成架构矩阵
+        id: matrix
+        uses: home-assistant/builder/actions/prepare-multi-arch-matrix@2026.09.0
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          image-name: ${{ env.IMAGE_NAME }}
+      - name: 读取加载项版本号
+        id: version
+        run: |
+          v=$(grep -E '^version:' z11_console/config.yaml | head -1 | sed -E 's/^version:\s*"?([^"]+)"?\s*$/\1/')
+          echo "version=${v}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: 构建 ${{ matrix.arch }}
+    needs: init
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.init.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: 构建并推送 ${{ matrix.arch }} 镜像
+        uses: home-assistant/builder/actions/build-image@2026.09.0
+        with:
+          arch: ${{ matrix.arch }}
+          context: z11_console
+          image: ${{ matrix.image }}
+          image-tags: |
+            ${{ needs.init.outputs.version }}
+            latest
+          build-args: |
+            BUILD_FROM=ghcr.io/home-assistant/${{ matrix.arch }}-base:3.20
+          version: ${{ needs.init.outputs.version }}
+          push: "true"
+          cosign: "false"

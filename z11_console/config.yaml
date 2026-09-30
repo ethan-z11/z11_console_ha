@@ -6,7 +6,7 @@ url: https://github.com/ethan-z11/z11_console_ha
 arch:
   - aarch64
   - amd64
-  - armv7
+image: ghcr.io/ethan-z11/{arch}-z11_console_ha
 init: false
 startup: application
 homeassistant_api: true

@@ -29,9 +29,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     HOME_CONSOLE_DATA=/data \
     HOME_CONSOLE_STATIC=/app/dist
 
-# cryptography 用 Alpine 预编译包，避免拉 Rust 工具链；aiohttp 有 musl 轮子。
-RUN apk add --no-cache python3 py3-pip py3-cryptography \
-    && pip3 install --no-cache-dir --break-system-packages "aiohttp>=3.9"
+# cryptography / aiohttp 用 Alpine 预编译包，覆盖全部架构，避免 pip 拉源码编译。
+RUN apk add --no-cache python3 py3-aiohttp py3-cryptography
 
 WORKDIR /app/server
 
