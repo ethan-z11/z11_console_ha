@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Cctv, DoorOpen, Droplets, House, Pencil, Plus, Search, Sparkles, Thermometer, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Cctv, DoorOpen, Droplets, House, Pencil, PersonStanding, Plus, Search, Sparkles, Thermometer, Trash2, X } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { ApiError, getCustom, getEntities, putCustom } from '../consoleApi';
@@ -53,6 +53,116 @@ const METRIC_ROWS: { metric: MetricName; label: string }[] = [
   { metric: 'temperature', label: '温度' },
   { metric: 'humidity', label: '湿度' },
 ];
+
+/** 可作“有人”判断的实体：在线的 binary_sensor / sensor（人在 / 毫米波存在传感器多为这两类）。 */
+function isOccupancyCandidate(entity: CatalogueEntity): boolean {
+  return entity.available !== false && (entity.domain === 'binary_sensor' || entity.domain === 'sensor');
+}
+
+/** 存在 / 占用 / 人体移动类设备在选择列表中排最前。 */
+const OCCUPANCY_PRIORITY_CLASSES = new Set(['presence', 'occupancy', 'motion']);
+const occupancyRank = (entity: CatalogueEntity) => (entity.deviceClass && OCCUPANCY_PRIORITY_CLASSES.has(entity.deviceClass) ? 0 : 1);
+
+/** 区域有人传感器一行：按钮打开多选弹窗；已选时显示数量与名称，可清空。 */
+function OccupancyRow({ scopeName, entityIds, candidates, onSave, onClear }: {
+  entityIds: string[];
+  candidates: CatalogueEntity[];
+  scopeName: string;
+  onSave: (entityIds: string[]) => void;
+  onClear: () => void;
+}) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const names = entityIds.map((id) => candidates.find((entity) => entity.id === id)?.name ?? id);
+  return (
+    <div className="metric-source-row">
+      <span className="metric-source-row__label"><PersonStanding size={14} />有人传感器</span>
+      {entityIds.length > 0
+        ? <button type="button" className="metric-source-row__current" onClick={() => setPickerOpen(true)} title="点击重新选择"><span className="metric-source-row__entity">{names.slice(0, 3).join('、')}{names.length > 3 ? ` 等 ${names.length} 个` : `（${names.length}）`}</span><em>任一有人即显示有人</em></button>
+        : <button type="button" className="small-button" onClick={() => setPickerOpen(true)}><Plus size={15} />选择传感器</button>}
+      {entityIds.length > 0 && <button type="button" className="icon-button" onClick={onClear} aria-label="清空有人传感器"><Trash2 size={16} /></button>}
+      {pickerOpen && (
+        <OccupancyPicker
+          scopeName={scopeName}
+          candidates={candidates}
+          current={entityIds}
+          onClose={() => setPickerOpen(false)}
+          onSave={(ids) => { onSave(ids); setPickerOpen(false); }}
+        />
+      )}
+    </div>
+  );
+}
+
+/** 有人传感器多选弹窗：勾选 binary_sensor / sensor（可多选，或关系）；带搜索，存在类排最前。 */
+function OccupancyPicker({ scopeName, candidates, current, onSave, onClose }: {
+  scopeName: string;
+  candidates: CatalogueEntity[];
+  current: string[];
+  onSave: (entityIds: string[]) => void;
+  onClose: () => void;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const pickerSearchId = useId();
+  const [query, setQuery] = useState('');
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(current));
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) dialog.showModal();
+  }, []);
+  const close = () => dialogRef.current?.close();
+  const handleKey = (event: KeyboardEvent<HTMLDialogElement>) => { if (event.key === 'Escape') event.preventDefault(); };
+
+  const keyword = query.trim().toLowerCase();
+  const matches = candidates
+    .filter((entity) => !keyword || entity.name.toLowerCase().includes(keyword) || entity.id.toLowerCase().includes(keyword))
+    .sort((a, b) => occupancyRank(a) - occupancyRank(b));
+  const toggle = (id: string) => {
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  return (
+    <dialog ref={dialogRef} className="device-dialog customize-dialog" aria-labelledby={`${pickerSearchId}-title`} onKeyDown={handleKey} onClose={onClose}>
+      <div className="device-dialog__heading">
+        <div><small>{scopeName}</small><h2 id={`${pickerSearchId}-title`}>选择有人传感器</h2></div>
+        <button type="button" className="icon-button" onClick={close} aria-label="完成"><X size={20} /></button>
+      </div>
+      <div className="customize-dialog__body">
+        <p className="settings-message">可多选：只要其中一个实体显示“有人”（binary_sensor 为“开”，sensor 状态为 on / home / true / 1 / present 等），该区域就显示有人。</p>
+        <div className="entity-filter__tools">
+          <label className="entity-filter__search" htmlFor={`${pickerSearchId}-q`}>
+            <Search size={16} />
+            <input id={`${pickerSearchId}-q`} type="search" placeholder="搜索名称或实体 ID" value={query} onChange={(event) => setQuery(event.target.value)} />
+          </label>
+        </div>
+        {matches.length === 0 ? <p className="settings-message">没有匹配的实体</p> : (
+          <section className="entity-filter__group">
+            <h4>二进制传感器 / 传感器<em>{matches.length}</em></h4>
+            <ul>
+              {matches.map((entity) => (
+                <li key={entity.id}>
+                  <label>
+                    <input type="checkbox" checked={picked.has(entity.id)} onChange={() => toggle(entity.id)} />
+                    <span className="entity-filter__name">{entity.name}{entity.deviceClass && <em className="entity-filter__class">{entityKindLabel(entity)}</em>}</span>
+                    <code>{entity.id}</code>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
+      <div className="customize-dialog__footer">
+        <span className="settings-message">已选 {picked.size} 个（或关系）</span>
+        <button type="button" className="small-button small-button--selected" onClick={() => onSave(candidates.filter((entity) => picked.has(entity.id)).map((entity) => entity.id))}>完成</button>
+      </div>
+    </dialog>
+  );
+}
 
 /** 温湿度来源一行：按钮打开勾选弹窗；已选时显示实体与参数，可更换或删除。 */
 function MetricSourceRow({ metric, label, icon, source, candidates, scopeName, onPick, onClear }: {
@@ -270,8 +380,9 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
     const assignments = Object.fromEntries(Object.entries(custom.assignments).filter(([, id]) => id !== roomId));
     const scenes = custom.scenes.filter((scene) => scene.scope !== roomId);
     const cameras = custom.cameras.filter((camera) => camera.scope !== roomId);
+    const occupancy = Object.fromEntries(Object.entries(custom.occupancy ?? {}).filter(([scope]) => scope !== roomId));
     setConfirmRoomId(null);
-    void mutate({ ...custom, rooms, assignments, scenes, cameras }, '房间已删除，其中的设备改为未加入任何房间');
+    void mutate({ ...custom, rooms, assignments, scenes, cameras, occupancy }, '房间已删除，其中的设备改为未加入任何房间');
   }
 
   /** 在选择器中勾选 / 取消设备：勾选即移动到该房间（一个设备只能属于一个房间），取消则变为未加入。 */
@@ -388,6 +499,15 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
     void mutate({ ...custom, metricSources }, metric === 'temperature' ? '温度来源已删除' : '湿度来源已删除');
   }
 
+  /** 保存某区域的有人传感器（多选，或关系）；空数组表示清空。 */
+  function saveOccupancy(scope: string, entityIds: string[]) {
+    if (!custom) return;
+    const occupancy = { ...(custom.occupancy ?? {}) };
+    if (entityIds.length > 0) occupancy[scope] = entityIds;
+    else delete occupancy[scope];
+    void mutate({ ...custom, occupancy }, '有人传感器已保存');
+  }
+
   if (!connected) return <section className="settings-card"><p className="settings-message">连接 Home Assistant 后，可在这里手动创建房间、添加设备和设置情景模式按钮。</p></section>;
   if (!data || !custom) return <section className="settings-card"><p className="settings-message">{error ?? '正在读取房间配置与已发现的设备…'}</p></section>;
 
@@ -405,6 +525,8 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
     temperature: data.entities.filter((entity) => entity.available !== false && entity.metrics?.some((item) => item.metric === 'temperature')),
     humidity: data.entities.filter((entity) => entity.available !== false && entity.metrics?.some((item) => item.metric === 'humidity')),
   };
+  // 可作区域“有人”判断的实体（在线 binary_sensor / sensor）。
+  const occupancyCandidates = data.entities.filter(isOccupancyCandidate);
   const metricSourceOf = (scope: string, metric: MetricName) => custom.metricSources?.find((item) => item.scope === scope && item.metric === metric);
   const editingScene = editingSceneId ? custom.scenes.find((scene) => scene.id === editingSceneId) ?? null : null;
   const iconPickerChoices: IconChoice[] | null = iconPicker ? (iconPicker.kind === 'room' ? ROOM_ICONS : SCENE_ICONS) : null;
@@ -477,6 +599,28 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
                       onClear={() => clearMetricSource(scope.id, metric)}
                     />
                   ))}
+                </li>
+              ))}
+            </ul>
+          )}
+      </section>
+
+      <section className="settings-card">
+        <div className="settings-card__heading"><span className="tile__chip"><PersonStanding size={20} /></span><div><h3>区域有人传感器</h3><p>为每个区域选择人在 / 存在 / 移动传感器（binary_sensor 或 sensor）。可多选，只要其中一个显示有人，该区域就显示有人。</p></div></div>
+        {occupancyCandidates.length === 0
+          ? <p className="settings-message">当前没有发现在线的 binary_sensor / sensor 实体。</p>
+          : (
+            <ul className="metric-source-list">
+              {[{ id: 'home', name: '我的家庭（主页）' }, ...custom.rooms.map((room) => ({ id: room.id, name: room.name }))].map((scope) => (
+                <li key={scope.id} className="metric-source-scope">
+                  <strong>{scope.name}</strong>
+                  <OccupancyRow
+                    scopeName={scope.name}
+                    entityIds={custom.occupancy?.[scope.id] ?? []}
+                    candidates={occupancyCandidates}
+                    onSave={(entityIds) => saveOccupancy(scope.id, entityIds)}
+                    onClear={() => saveOccupancy(scope.id, [])}
+                  />
                 </li>
               ))}
             </ul>

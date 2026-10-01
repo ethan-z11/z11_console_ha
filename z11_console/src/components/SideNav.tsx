@@ -23,12 +23,14 @@ interface SideNavProps {
   onOpenMusic?: () => void;
   /** 人员在家状态列表；为空时不显示。 */
   people?: PersonStatus[];
+  /** 区域有人状态（scope → 是否有人）：房间 / 首页按钮上显示绿色圆点。 */
+  occupancy?: Record<string, boolean>;
   /** 导航栏品牌名称（默认"家庭控制"）。 */
   brandTitle?: string;
 }
 
 /** 左侧导航：全屋在前，房间直接展开；手机上变为可横滑的底部标签栏。 */
-export function SideNav({ home, homeTitle, current, now, onHome, onOpenRoom, onSettings, onEditRooms, onOpenMusic, people, brandTitle }: SideNavProps) {
+export function SideNav({ home, homeTitle, current, now, onHome, onOpenRoom, onSettings, onEditRooms, onOpenMusic, people, occupancy, brandTitle }: SideNavProps) {
   const navRef = useRef<HTMLElement>(null);
   const currentRoomId = typeof current === 'object' ? current.roomId : null;
   const currentKey = currentRoomId ?? current;
@@ -45,17 +47,22 @@ export function SideNav({ home, homeTitle, current, now, onHome, onOpenRoom, onS
     <nav ref={navRef} className="side-nav" aria-label="主导航">
       <div className="side-nav__brand"><span className="brand-mark" aria-hidden="true"><House size={18} /></span><span>{brandTitle ?? '家庭控制'}</span></div>
       <div className="side-nav__items">
-        <button type="button" title={homeTitle} aria-current={current === 'home' ? 'page' : undefined} onClick={onHome}><House size={20} /><span>{homeTitle}</span></button>
+        <button type="button" title={occupancy?.home ? `${homeTitle}（有人）` : homeTitle} aria-current={current === 'home' ? 'page' : undefined} onClick={onHome}><House size={20} /><span>{homeTitle}</span>
+          {occupancy?.home && <i className="side-nav__dot side-nav__dot--occupied" aria-label="屋内有人" />}
+        </button>
         {groups.map((group) => (
           <div key={group.label} className="side-nav__group" role="group" aria-label={group.label}>
             <span className="side-nav__label" aria-hidden="true">{group.label}</span>
             {group.rooms.map((room) => {
               const Icon = roomIcon(room);
-              const tone = getRoomActivity(home, room.id)[0]?.tone;
+              const occupied = occupancy?.[room.id] === true;
+              const tone = occupied ? null : getRoomActivity(home, room.id)[0]?.tone;
               return (
-                <button key={room.id} type="button" title={room.name} aria-label={`${room.name}${tone === 'alert' ? '，有告警' : tone ? '，有设备运行' : ''}`} aria-current={currentRoomId === room.id ? 'page' : undefined} onClick={() => onOpenRoom(room.id)}>
+                <button key={room.id} type="button" title={occupied ? `${room.name}（有人）` : room.name} aria-label={`${room.name}${occupied ? '，有人' : tone === 'alert' ? '，有告警' : tone ? '，有设备运行' : ''}`} aria-current={currentRoomId === room.id ? 'page' : undefined} onClick={() => onOpenRoom(room.id)}>
                   <Icon size={20} /><span>{room.name}</span>
-                  {tone && <i className={`side-nav__dot side-nav__dot--${tone === 'alert' ? 'alert' : 'active'}`} aria-hidden="true" />}
+                  {occupied
+                    ? <i className="side-nav__dot side-nav__dot--occupied" aria-hidden="true" />
+                    : tone && <i className={`side-nav__dot side-nav__dot--${tone === 'alert' ? 'alert' : 'active'}`} aria-hidden="true" />}
                 </button>
               );
             })}

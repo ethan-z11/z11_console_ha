@@ -307,7 +307,7 @@ export function entityKindLabel(entity: Pick<CatalogueEntity, 'domain' | 'device
   }
 }
 
-const EMPTY_CUSTOM: CustomConfig = { rooms: [], assignments: {}, scenes: [], entities: {}, cameras: [], metricSources: [] };
+const EMPTY_CUSTOM: CustomConfig = { rooms: [], assignments: {}, scenes: [], entities: {}, cameras: [], metricSources: [], occupancy: {} };
 
 /**
  * 以后端发现并过滤后的目录为骨架，用 HA 实时状态生成页面数据。房间完全来自设置中的手动房间，

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
-import { Eye, Maximize, Minimize, Pencil, Snowflake, Sun, Power, RotateCcw, Settings, Star } from 'lucide-react';
+import { Eye, Maximize, Minimize, Pencil, PersonStanding, Snowflake, Sun, Power, RotateCcw, Settings, Star } from 'lucide-react';
 import { AdaptiveGrid } from './components/AdaptiveGrid';
 import { ActiveDevicesDialog } from './components/ActiveDevicesDialog';
 import type { ActiveListRequest } from './components/ActiveDevicesDialog';
@@ -41,6 +41,15 @@ const favoritesScope = 'favorites';
 
 function presentDevices(devices: Device[], ids: string[]): Device[] {
   return ids.map((id) => devices.find((device) => device.id === id)).filter((device): device is Device => Boolean(device));
+}
+
+/** 区域有人 / 无人徽标：仅在该区域配置了传感器时显示。 */
+function OccupancyBadge({ occupied }: { occupied: boolean }) {
+  return (
+    <span className={`occupancy-badge occupancy-badge--${occupied ? 'on' : 'off'}`} title={occupied ? '传感器显示当前有人' : '传感器显示当前无人'}>
+      <PersonStanding size={13} />{occupied ? '有人' : '无人'}
+    </span>
+  );
 }
 
 function App() {
@@ -204,6 +213,10 @@ function Console({ authenticated, onLogout, onOpenSetup }: ConsoleProps) {
   const roomCameras = allCameras.filter((camera) => camera.scope === selectedRoom.id);
   const selectedRoomDevices = useMemo(() => orderedDevices(getRoomDevices(home, selectedRoom.id), layout.order[selectedRoom.id]), [home, selectedRoom.id, layout.order]);
   const selectedRoomLitCount = selectedRoomDevices.filter(isLit).length;
+  // 区域有人传感器状态（后端按“或”计算后下发）；只给配置过传感器的区域显示徽标。
+  const occupancy = server.status?.occupancy;
+  const occupancyScope = page === 'room' ? selectedRoom.id : page === 'home' ? 'home' : null;
+  const occupancyKnown = Boolean(occupancy && occupancyScope && occupancyScope in occupancy);
   const selectedClimate = home.devices.filter(isClimate).find((device) => device.id === selectedClimateId);
   const roomOf = (device: Device): Room => home.rooms.find((room) => room.id === device.roomId) ?? selectedRoom;
   const favorites = favoriteIds(layout);
@@ -418,7 +431,7 @@ function Console({ authenticated, onLogout, onOpenSetup }: ConsoleProps) {
 
   return (
     <div className={`app-shell${swipeHint ? ' app-shell--dragging' : ''}`}>
-      <SideNav home={home} homeTitle={homeTitle} current={page === 'room' ? { roomId: selectedRoom.id } : page} now={now} onHome={openHome} onOpenRoom={openRoom} onSettings={requestSettings} onEditRooms={canControl ? () => setRoomOrderOpen(true) : undefined} onOpenMusic={musicUrl ? openMusic : undefined} people={server.status?.people} brandTitle={server.status?.brandTitle} />
+      <SideNav home={home} homeTitle={homeTitle} current={page === 'room' ? { roomId: selectedRoom.id } : page} now={now} onHome={openHome} onOpenRoom={openRoom} onSettings={requestSettings} onEditRooms={canControl ? () => setRoomOrderOpen(true) : undefined} onOpenMusic={musicUrl ? openMusic : undefined} people={server.status?.people} occupancy={occupancy} brandTitle={server.status?.brandTitle} />
       <header className={`hero${page === 'home' ? ' hero--home' : ''}${page === 'settings' ? ' hero--settings' : ''}${heroTone ? ` hero--weather weather--${heroTone}` : ''}`}>
         {page === 'room' && <RoomScene key={selectedRoom.id} room={selectedRoom} lit={selectedRoomLitCount > 0} />}
         <div className="hero__top">
@@ -435,7 +448,7 @@ function Console({ authenticated, onLogout, onOpenSetup }: ConsoleProps) {
           <div className="hero__main">
             <div className="hero__title">
               <div>
-                <h1>{page === 'room' ? selectedRoom.name : page === 'settings' ? '设置' : page === 'music' ? '音乐' : homeClock}{page === 'home' && season && <span className={`season-badge season-badge--${season}`} title="季节规则（设置 → 自动化）">{season === 'summer' ? <Sun size={14} /> : <Snowflake size={14} />}{season === 'summer' ? '夏季' : '冬季'}</span>}</h1>
+                <h1>{page === 'room' ? selectedRoom.name : page === 'settings' ? '设置' : page === 'music' ? '音乐' : homeClock}{page === 'home' && season && <span className={`season-badge season-badge--${season}`} title="季节规则（设置 → 自动化）">{season === 'summer' ? <Sun size={14} /> : <Snowflake size={14} />}{season === 'summer' ? '夏季' : '冬季'}</span>}{occupancyKnown && occupancyScope && <OccupancyBadge occupied={occupancy?.[occupancyScope] === true} />}</h1>
                 {((page !== 'home') || homeSubline) && <p>{page === 'room' ? '房间状态与设备控制' : page === 'settings' ? '管理密码、Home Assistant 连接与控制权限' : page === 'music' ? '内嵌音乐界面' : homeSubline}</p>}
               </div>
               {page === 'home' && <WeatherCompact weather={weather} onOpen={() => setWeatherOpen(true)} />}

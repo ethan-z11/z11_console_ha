@@ -87,6 +87,11 @@ CUSTOM_CAMERA_URL_MAX = 300
 CUSTOM_METRIC_SOURCE_MAX = 100
 METRIC_ATTR_RE = re.compile(r"^[A-Za-z0-9_]{1,48}$")
 METRIC_NAMES = ("temperature", "humidity")
+# 房间有人传感器：每个作用域（主页 home / 房间）最多选择的实体数；多个为“或”关系，任一触发即有人。
+CUSTOM_OCCUPANCY_PER_SCOPE = 10
+OCCUPANCY_DOMAINS = ("binary_sensor", "sensor")
+# binary_sensor 统一按 on 判断；sensor 实体的状态值命中其中任一（小写比较）即视为有人。
+OCCUPIED_STATES = {"on", "home", "true", "1", "yes", "occupied", "present", "有人"}
 RTSP_URL_RE = re.compile(r"^rtsp://\S+$", re.IGNORECASE)
 # ONVIF 摄像头：主机（IP 或域名）、端口、登录账号密码；不存整 URL，取流时由后端组装。
 CUSTOM_CAMERA_HOST_MAX = 128
@@ -258,8 +263,33 @@ def clean_custom(raw: Any, known_rooms: set[str] | None = None, known_entities: 
         metric_slots.add((scope, metric))
         metric_sources.append({"id": source_id, "scope": scope, "metric": metric, "entity": entity_id, "attribute": attribute})
 
+    # 区域有人传感器：作用域（主页 home / 房间）→ 实体 id 列表；多个实体为“或”关系。
+    # 只允许 binary_sensor / sensor；保存时以发现结果为准丢弃未知实体。
+    occupancy_in = raw.get("occupancy") if isinstance(raw.get("occupancy"), dict) else {}
+    occupancy: dict[str, list[str]] = {}
+    for scope, entity_list in occupancy_in.items():
+        if len(occupancy) >= CUSTOM_ROOM_MAX + 1:
+            break
+        if not isinstance(scope, str) or not (scope == HOME_SCOPE or scope in valid_rooms):
+            continue
+        if not isinstance(entity_list, list) or not entity_list:
+            continue
+        picked: list[str] = []
+        for entity_id in entity_list:
+            if len(picked) >= CUSTOM_OCCUPANCY_PER_SCOPE:
+                break
+            if not isinstance(entity_id, str) or not ENTITY_ID_RE.fullmatch(entity_id) or entity_id in picked:
+                continue
+            if entity_id.split(".")[0] not in OCCUPANCY_DOMAINS:
+                continue
+            if known_entities is not None and entity_id not in known_entities:
+                continue
+            picked.append(entity_id)
+        if picked:
+            occupancy[scope] = picked
+
     return {"rooms": rooms, "assignments": assignments, "scenes": scenes, "entities": entities,
-            "cameras": cameras, "metricSources": metric_sources}
+            "cameras": cameras, "metricSources": metric_sources, "occupancy": occupancy}
 
 
 def id_list(value: Any) -> list[str] | None:

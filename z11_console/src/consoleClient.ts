@@ -69,6 +69,8 @@ export interface CustomConfig {
   cameras: CameraConfig[];
   /** 房间 / 主页的温湿度来源：每个 scope+metric 最多一条，手动指定实体与其数值参数，同槽位新增自动替代。 */
   metricSources?: MetricSource[];
+  /** 区域有人传感器：scope（home / 房间 id）→ 实体 id 列表；多个为“或”，任一触发即有人。 */
+  occupancy?: Record<string, string[]>;
 }
 
 /** 温湿度显示来源：scope 为 'home'（主页）或房间 id；attribute 为 'state' 或实体属性键。 */
@@ -139,6 +141,8 @@ export interface ServerStatus {
   people?: PersonStatus[];
   /** go2rtc 低延迟流媒体是否已配置（启用后摄像头走 WebRTC，自动回退 MSE/MJPEG）。 */
   go2rtc?: { enabled: boolean; modes?: string };
+  /** 区域有人状态：scope（home / 房间 id）→ 是否有人；只包含已配置传感器的区域。 */
+  occupancy?: Record<string, boolean>;
   ha: HaStatus;
 }
 
@@ -313,7 +317,7 @@ export class ConsoleClient {
   private handle(message: ServerMessage) {
     switch (message.type) {
       case 'hello': this.handlers.onHello(message.catalogue, message.layout, message.custom); return;
-      case 'status': this.handlers.onStatus({ dataSource: message.dataSource, controlEnabled: message.controlEnabled, homeTitle: message.homeTitle, brandTitle: message.brandTitle, theme: message.theme, tileScale: message.tileScale, accent: message.accent, season: message.season, musicUrl: message.musicUrl, allOffKinds: message.allOffKinds, allOffScopes: message.allOffScopes, allOffEntities: message.allOffEntities, people: message.people, go2rtc: message.go2rtc, ha: message.ha }); return;
+      case 'status': this.handlers.onStatus({ dataSource: message.dataSource, controlEnabled: message.controlEnabled, homeTitle: message.homeTitle, brandTitle: message.brandTitle, theme: message.theme, tileScale: message.tileScale, accent: message.accent, season: message.season, musicUrl: message.musicUrl, allOffKinds: message.allOffKinds, allOffScopes: message.allOffScopes, allOffEntities: message.allOffEntities, people: message.people, go2rtc: message.go2rtc, occupancy: message.occupancy, ha: message.ha }); return;
       case 'catalogue': this.handlers.onCatalogue(message.catalogue); return;
       case 'custom': this.handlers.onCustom(message.custom); return;
       case 'entities': this.handlers.onEntities(message.changed, Boolean(message.snapshot)); return;

@@ -38,7 +38,7 @@ from .ha import HaUpstream
 from .motion import PTZ_DIRECTIONS, MotionScreenshotter
 from .onvif import OnvifError, OnvifManager
 from .season import HELPER_ENTITY as SEASON_HELPER, SEASONS, SeasonRules
-from .store import ACCENTS, BRAND_TITLE_MAX, DEFAULT_BRAND_TITLE, DEFAULT_HOME_TITLE, HOME_TITLE_MAX, THEMES, TILE_SCALE_MAX, TILE_SCALE_MIN, USERNAME_MAX, USERNAME_RE, PASSWORD_MIN, PASSWORD_MAX, ACCOUNTS_MAX, Account, Store, clean_custom, hash_pin, id_list, is_tile_scale, verify_pin
+from .store import ACCENTS, BRAND_TITLE_MAX, DEFAULT_BRAND_TITLE, DEFAULT_HOME_TITLE, HOME_TITLE_MAX, THEMES, TILE_SCALE_MAX, TILE_SCALE_MIN, USERNAME_MAX, USERNAME_RE, PASSWORD_MIN, PASSWORD_MAX, ACCOUNTS_MAX, Account, Store, clean_custom, hash_pin, id_list, is_tile_scale, verify_pin, OCCUPIED_STATES
 from .weather import Weather, WeatherError, valid_location
 
 log = logging.getLogger("home_console_server")
@@ -236,9 +236,11 @@ class ConsoleServer:
             self.schedule_refresh(fetch=False)
         if SEASON_HELPER in changed:
             await self.broadcast(self.status_message())
-        # 人员在家实体状态变化时也广播状态更新
+        # 人员在家实体 / 区域有人传感器状态变化时也广播状态更新
         people_ids = {p.get("entityId", "") for p in self.store.settings.people if p.get("entityId")}
-        if people_ids & changed.keys():
+        occupancy_ids = {entity_id for entity_ids in self.store.custom.get("occupancy", {}).values()
+                         for entity_id in entity_ids}
+        if (people_ids | occupancy_ids) & changed.keys():
             await self.broadcast(self.status_message())
         visible_changed = {entity_id: state for entity_id, state in changed.items() if entity_id in self.visible}
         if visible_changed:
@@ -300,6 +302,7 @@ class ConsoleServer:
                 "allOffKinds": settings.all_off_kinds, "allOffScopes": settings.all_off_scopes,
                 "allOffEntities": settings.all_off_entities,
                 "people": self._people_status(),
+                "occupancy": self._occupancy_status(),
                 "go2rtc": {"enabled": bool(settings.go2rtc_url), "modes": PLAYER_MODES},
                 "ha": self.upstream.status}
 
@@ -335,6 +338,31 @@ class ConsoleServer:
                     is_home = state_value in home_states
             result.append({"id": person.get("id", ""), "name": person.get("name", ""),
                            "image": image_url, "home": is_home})
+        return result
+
+    def _occupancy_status(self) -> dict[str, bool]:
+        """构建各区域（主页 / 房间）是否有人：每区域多个传感器为“或”，任一命中即有人。
+
+        binary_sensor 按 on 判断；sensor 按 OCCUPIED_STATES 状态值集合判断；
+        实体不可用 / 未知状态不算有人。未配置传感器的区域不出现在结果里。
+        """
+        occupancy_cfg = self.store.custom.get("occupancy", {})
+        if not occupancy_cfg:
+            return {}
+        result: dict[str, bool] = {}
+        for scope, entity_ids in occupancy_cfg.items():
+            occupied = False
+            for entity_id in entity_ids:
+                if not self.upstream.states:
+                    break
+                state = self.upstream.states.get(entity_id)
+                if state is None:
+                    continue
+                value = (state.get("state", "") if isinstance(state, dict) else str(state)).strip().lower()
+                if value in OCCUPIED_STATES:
+                    occupied = True
+                    break
+            result[scope] = occupied
         return result
 
     async def camera_stream(self, request: web.Request) -> web.StreamResponse | web.Response:
@@ -1089,6 +1117,7 @@ class ConsoleServer:
             entity["id"]: {f"{option['metric']}:{option['key']}" for option in entity.get("metrics", [])}
             for entity in self.discovered["entities"] if entity.get("metrics")
         }
+        old_occupancy = self.store.custom.get("occupancy", {})
         custom = clean_custom(body, known_entities=known_entities, known_metrics=known_metrics)
         self.store.save_custom(custom)
         # 摄像头配置可能增删改：ONVIF 探测缓存作废，并按新列表启停运动监测。
@@ -1097,6 +1126,9 @@ class ConsoleServer:
         self.store.audit("custom_changed", client_ip(request), username=session["username"],
                          rooms=len(custom["rooms"]), assignments=len(custom["assignments"]), scenes=len(custom["scenes"]))
         await self.broadcast({"type": "custom", "custom": self.public_custom()})
+        # 有人传感器配置变化后立即重算并推送区域占用状态。
+        if custom.get("occupancy", {}) != old_occupancy:
+            await self.broadcast(self.status_message())
         return web.json_response(custom)
 
     async def put_layout(self, request: web.Request) -> web.Response:

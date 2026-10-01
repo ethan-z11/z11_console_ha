@@ -171,6 +171,7 @@ strong { font-weight: 600; }
 .side-nav__items button[aria-current="page"] svg { color: var(--accent); }
 .side-nav__dot { width: 7px; height: 7px; flex: none; margin-left: auto; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
 .side-nav__dot--alert { background: var(--alert); box-shadow: 0 0 8px var(--alert); }
+.side-nav__dot--occupied { background: #4ade80; box-shadow: 0 0 8px rgba(74, 222, 128, .75); }
 .side-nav__items .side-nav__edit { margin-top: 14px; min-height: 40px; color: var(--text-3); font-size: 13px; }
 .side-nav__footer { display: flex; flex-direction: column; align-items: stretch; gap: 10px; padding: 0 8px; }
 .side-nav__footer-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
@@ -803,6 +804,12 @@ strong { font-weight: 600; }
 .season-badge { display: inline-flex; align-items: center; gap: 4px; margin-left: 12px; padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; letter-spacing: 0; vertical-align: middle; }
 .season-badge--summer { background: rgba(255, 141, 82, .16); color: var(--heat); }
 .season-badge--winter { background: rgba(114, 182, 255, .16); color: var(--cool); }
+/* 区域有人 / 无人徽标（标题旁）。 */
+.occupancy-badge { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; vertical-align: middle; }
+.occupancy-badge--on { background: rgba(74, 222, 128, .18); color: #4ade80; }
+.occupancy-badge--off { background: rgba(148, 163, 184, .14); color: var(--text-3); }
+/* 有人传感器选择列表里的设备类型小标签。 */
+.entity-filter__class { margin-left: 6px; padding: 0 6px; border-radius: 999px; background: rgba(74, 222, 128, .14); color: #4ade80; font-size: 10px; font-style: normal; }
 .climate-card--locked .climate-card__power { opacity: .45; }
 .automation-list__note--error { color: var(--alert); }
 .automation-list__note--good { color: var(--good); }
