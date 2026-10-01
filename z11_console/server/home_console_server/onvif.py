@@ -248,7 +248,16 @@ class OnvifClient:
             if _local_name(msg.tag) != "NotificationMessage":
                 continue
             topic = next((g for g in msg.iter() if _local_name(g.tag) == "Topic" and g.text), None)
-            messages.append({"topic": topic.text if topic is not None else ""})
+            entry: dict = {"topic": topic.text if topic is not None else ""}
+            for child in msg.iter():
+                name = _local_name(child.tag)
+                if name == "SimpleItem":
+                    item_name = (child.get("Name") or "").strip().lower()
+                    if item_name == "state" and "state" not in entry:
+                        entry["state"] = (child.get("Value") or "").strip().lower() or None
+                elif name == "Message" and child.get("PropertyOperation"):
+                    entry["operation"] = child.get("PropertyOperation") or ""
+            messages.append(entry)
         return messages
 
 

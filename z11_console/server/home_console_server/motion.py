@@ -265,12 +265,23 @@ class MotionScreenshotter:
                 except asyncio.TimeoutError:
                     pass
 
+    # 事件状态里这些值才算“运动中”；其余（false/inactive/0 等）不算。
+    _MOTION_TRUE_STATES = {"true", "1", "on", "active", "motion", "alarm"}
+
     @staticmethod
     def _is_motion(messages: list[dict]) -> bool:
         for message in messages:
             topic = (message.get("topic") or "").lower()
-            if any(keyword in topic for keyword in MOTION_TOPIC_KEYWORDS):
-                return True
+            if not any(keyword in topic for keyword in MOTION_TOPIC_KEYWORDS):
+                continue
+            # 订阅建立时摄像头会补发一遍所有属性的当前状态（PropertyOperation=Initialized、
+            # State=false）：这些不是运动。不滤掉的话，订阅 TTL 到期重建一次就抓一张没人图。
+            if (message.get("operation") or "").lower() == "initialized":
+                continue
+            state = message.get("state")
+            if state is not None and state not in MotionScreenshotter._MOTION_TRUE_STATES:
+                continue
+            return True
         return False
 
     def _schedule_capture(self, camera_id: str, name: str, rtsp_url: str, delay: float = 0.0) -> None:
