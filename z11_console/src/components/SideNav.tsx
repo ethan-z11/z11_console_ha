@@ -1,5 +1,6 @@
 import { ArrowUpDown, House, Music, Settings } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { apiPath } from '../consoleApi';
 import type { PersonStatus } from '../consoleClient';
 import { roomIcon } from '../appearance';
 import { getRoomActivity } from '../selectors';
@@ -68,7 +69,7 @@ export function SideNav({ home, homeTitle, current, now, onHome, onOpenRoom, onS
           <div className="people-bar">
             {people.map((person) => (
               <div key={person.id} className={`people-avatar ${person.home ? 'people-avatar--home' : 'people-avatar--away'}`} title={`${person.name}：${person.home ? '在家' : '不在家'}`}>
-                <img src={person.image} alt={person.name} loading="lazy" />
+                <img src={apiPath(person.image)} alt={person.name} loading="lazy" />
                 {person.home && <span className="people-avatar__badge"><House size={10} /></span>}
               </div>
             ))}
