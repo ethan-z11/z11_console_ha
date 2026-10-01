@@ -450,7 +450,7 @@ function Console({ authenticated, onLogout, onOpenSetup }: ConsoleProps) {
       <main className={`main-content ${enterClass}`} key={pageKey} style={dragStyle}>
         {page === 'home' && (
           <>
-            {homeCameras.length > 0 && <CameraBoard title="摄像头" cameras={homeCameras} scale={tileScale} />}
+            {homeCameras.length > 0 && <CameraBoard title="摄像头" cameras={homeCameras} scale={tileScale} go2rtcEnabled={server.status?.go2rtc?.enabled ?? false} />}
             {homeScenes.length > 0 && <SceneBoard title="常用情景" scenes={homeScenes} entities={server.catalogue?.entities ?? []} pendingId={pendingSceneId} onRun={runScene} />}
             <div className="section-heading">
               <h2>常用设备</h2>
@@ -480,7 +480,7 @@ function Console({ authenticated, onLogout, onOpenSetup }: ConsoleProps) {
         )}
         {page === 'room' && (
           <>
-            {roomCameras.length > 0 && <CameraBoard title="摄像头" cameras={roomCameras} scale={tileScale} />}
+            {roomCameras.length > 0 && <CameraBoard title="摄像头" cameras={roomCameras} scale={tileScale} go2rtcEnabled={server.status?.go2rtc?.enabled ?? false} />}
             {roomScenes.length > 0 && <SceneBoard title="情景模式" scenes={roomScenes} entities={server.catalogue?.entities ?? []} pendingId={pendingSceneId} onRun={runScene} />}
             <div className="section-heading">
               <h2>设备与状态</h2>

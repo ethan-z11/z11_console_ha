@@ -261,6 +261,10 @@ strong { font-weight: 600; }
 .camera-stream__overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #e8eef5; font-size: 13px; background: rgba(8, 12, 18, .55); text-align: center; padding: 12px; }
 .camera-stream__overlay small { color: rgba(232, 238, 245, .7); font-size: 11px; }
 .camera-stream__overlay--error { background: rgba(20, 10, 10, .72); }
+/* go2rtc 播放器 iframe 铺满卡片；黑底避免加载时闪白。 */
+.camera-stream__rtc { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; }
+.camera-stream__fallback { position: absolute; right: 8px; bottom: 8px; z-index: 2; padding: 3px 9px; border: 1px solid var(--hairline-strong); border-radius: 999px; background: rgba(8, 12, 18, .62); color: rgba(232, 238, 245, .85); font-size: 10px; line-height: 1.5; cursor: pointer; backdrop-filter: blur(4px); }
+.camera-stream__fallback:hover { background: rgba(8, 12, 18, .85); color: #fff; }
 .camera-stream__spin { animation: spin 1.4s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 

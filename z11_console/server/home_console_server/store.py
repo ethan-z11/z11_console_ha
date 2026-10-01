@@ -305,6 +305,8 @@ class Settings:
     season_demo: str = "summer"  # 演示模式下的季节；HA 模式的季节保存在 HA 的季节辅助元素中
     tile_scale: int = TILE_SCALE_DEFAULT  # 设备格子缩放百分比（80–120），所有屏幕共用
     music_url: str = ""  # 音乐页内嵌地址（iframe），空表示未配置，首页不显示音乐入口
+    # go2rtc 流媒体服务地址（如 http://192.168.2.203:1984）；空 = 用 ffmpeg 转 MJPEG 的旧方案。
+    go2rtc_url: str = ""
     # “一键关闭”可关的设备类别（默认只关灯）与区域（空列表 = 全部房间）。
     all_off_kinds: list[str] = field(default_factory=lambda: ['light'])
     all_off_scopes: list[str] = field(default_factory=list)
@@ -330,6 +332,7 @@ class Settings:
             "accent": self.accent,
             "seasonRules": self.season_rules,
             "musicUrl": self.music_url,
+            "go2rtcUrl": self.go2rtc_url,
             "allOffKinds": self.all_off_kinds,
             "allOffScopes": self.all_off_scopes,
             "allOffEntities": self.all_off_entities,
@@ -423,6 +426,7 @@ class Store:
             season_rules=raw.get("seasonRules") is True,
             season_demo=raw.get("seasonDemo") if raw.get("seasonDemo") in ("summer", "winter") else "summer",
             music_url=str(raw.get("musicUrl", "")),
+            go2rtc_url=str(raw.get("go2rtcUrl", "")),
             all_off_kinds=id_list(raw.get("allOffKinds")) or ["light"],
             all_off_scopes=id_list(raw.get("allOffScopes")) or [],
             all_off_entities=id_list(raw.get("allOffEntities")) or [],
@@ -446,6 +450,7 @@ class Store:
             "seasonRules": settings.season_rules,
             "seasonDemo": settings.season_demo,
             "musicUrl": settings.music_url,
+            "go2rtcUrl": settings.go2rtc_url,
             "allOffKinds": settings.all_off_kinds,
             "allOffScopes": settings.all_off_scopes,
             "allOffEntities": settings.all_off_entities,

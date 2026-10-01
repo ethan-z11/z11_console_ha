@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import ipaddress
 import json
 import logging
@@ -32,6 +33,7 @@ from .auth import LoginLimiter, Sessions
 from .automations import DOMAIN as AUTOMATION_DOMAIN, build_automations, demo_automations
 from .cameras import BOUNDARY as CAMERA_BOUNDARY, CameraStreamer
 from .discovery import SCENE_DOMAINS, build_catalogue, filtered, visible_ids
+from .go2rtc import ADDON_CANDIDATES, PLAYER_MODES, check, detect, ensure_stream, normalize_base, proxy_static, proxy_ws
 from .ha import HaUpstream
 from .motion import PTZ_DIRECTIONS, MotionScreenshotter
 from .onvif import OnvifError, OnvifManager
@@ -298,6 +300,7 @@ class ConsoleServer:
                 "allOffKinds": settings.all_off_kinds, "allOffScopes": settings.all_off_scopes,
                 "allOffEntities": settings.all_off_entities,
                 "people": self._people_status(),
+                "go2rtc": {"enabled": bool(settings.go2rtc_url), "modes": PLAYER_MODES},
                 "ha": self.upstream.status}
 
     def public_custom(self) -> dict[str, Any]:
@@ -388,6 +391,69 @@ class ConsoleServer:
             return web.json_response(await self.onvif.info(camera))
         except OnvifError as error:
             return web.json_response({"error": str(error)}, status=502)
+
+    # ---------- go2rtc 低延迟流媒体（WebRTC，回退 MSE/HLS/MP4/MJPEG） ----------
+
+    @staticmethod
+    def _go2rtc_stream_name(camera_id: str) -> str:
+        """摄像头 id 可能含中文 / 特殊字符，统一压成 go2rtc 安全的流名（同 id 稳定同名）。"""
+        return "z11_" + hashlib.sha1(camera_id.encode("utf-8")).hexdigest()[:16]
+
+    async def go2rtc_ensure(self, request: web.Request) -> web.Response:
+        """GET /api/go2rtc-ensure?cid=…：确保该摄像头已注册到 go2rtc，返回播放器所需流名。
+
+        与看实时画面同级，无需管理员登录；RTSP 地址（含账密）不出本服务。
+        """
+        camera = self._camera_entry(request.query.get("cid", ""))
+        if camera is None:
+            raise web.HTTPNotFound(text="camera not found")
+        base_url = self.store.settings.go2rtc_url
+        if not base_url:
+            return web.json_response({"error": "未配置 go2rtc 流媒体服务"}, status=409)
+        try:
+            rtsp_url = await self._camera_rtsp_url(camera)
+            name = self._go2rtc_stream_name(str(camera.get("id", "")))
+            await ensure_stream(base_url, name, rtsp_url)
+        except Exception as error:
+            return web.json_response({"error": f"go2rtc 连接摄像头失败：{error}"}, status=502)
+        return web.json_response({"name": name, "modes": PLAYER_MODES})
+
+    async def go2rtc_detect(self, request: web.Request) -> web.Response:
+        """POST /api/admin/go2rtc-detect {url?}：测试给定地址，或在 HAOS 内网自动发现 go2rtc。"""
+        self._require_admin(request)
+        try:
+            body = await request.json()
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            body = {}
+        given = str(body.get("url", "")).strip() if isinstance(body, dict) else ""
+        if given:
+            base_url = normalize_base(given)
+            if base_url is None:
+                return web.json_response({"error": "地址需以 http:// 或 https:// 开头"}, status=400)
+            try:
+                await check(base_url)
+            except Exception as error:
+                return web.json_response({"error": f"无法连接 go2rtc：{error}"}, status=502)
+            return web.json_response({"url": base_url})
+        found = await detect(ADDON_CANDIDATES)
+        if not found:
+            return web.json_response({"error": "未自动发现在运行的 go2rtc，请手动填写地址",
+                                      "tried": list(ADDON_CANDIDATES)}, status=404)
+        return web.json_response({"url": found})
+
+    async def go2rtc_static(self, request: web.Request) -> web.StreamResponse:
+        """GET /go2rtc/…：go2rtc 播放器静态文件的同源反向代理（白名单）。"""
+        base_url = self.store.settings.go2rtc_url
+        if not base_url:
+            raise web.HTTPNotFound()
+        return await proxy_static(request, base_url)
+
+    async def go2rtc_ws(self, request: web.Request) -> web.WebSocketResponse:
+        """GET /go2rtc/api/ws：go2rtc 信令 / 媒体 WebSocket 的同源反向代理。"""
+        base_url = self.store.settings.go2rtc_url
+        if not base_url:
+            raise web.HTTPNotFound()
+        return await proxy_ws(request, base_url)
 
     async def camera_ptz(self, request: web.Request) -> web.Response:
         """POST /api/camera-ptz {cid, direction}：ONVIF 云台连续移动 / 停止。无需管理员登录。"""
@@ -864,6 +930,21 @@ class ConsoleServer:
             if music_url != settings.music_url:
                 settings.music_url = music_url
                 changed.append("musicUrl")
+        if "go2rtcUrl" in body:
+            go2rtc_url = normalize_base(str(body["go2rtcUrl"]))
+            if go2rtc_url is None:
+                return web.json_response({"error": "go2rtc 地址需是完整的 http:// 或 https:// 网址"}, status=400)
+            if len(go2rtc_url) > 300:
+                return web.json_response({"error": "go2rtc 地址过长"}, status=400)
+            # 非空地址保存前必须连得上，避免前端 iframe 静默黑屏；清空则随时允许。
+            if go2rtc_url:
+                try:
+                    await check(go2rtc_url)
+                except Exception as error:
+                    return web.json_response({"error": f"无法连接 go2rtc：{error}"}, status=409)
+            if go2rtc_url != settings.go2rtc_url:
+                settings.go2rtc_url = go2rtc_url
+                changed.append("go2rtcUrl")
         if "allOffKinds" in body:
             valid = {"light", "climate", "fan", "cover", "switch"}
             kinds = [k for k in id_list(body["allOffKinds"]) if k in valid] if body["allOffKinds"] is not None else ["light"]
@@ -1111,6 +1192,11 @@ def create_app(data_dir: Path, static_dir: Path | None) -> web.Application:
         web.post("/api/camera-ptz", console.camera_ptz),
         web.get("/api/camera-shots", console.camera_shots),
         web.get("/api/camera-shot", console.camera_shot),
+        # go2rtc 低延迟流媒体：流注册 / 地址探测 / 播放器静态文件 + WS 反向代理。
+        web.get("/api/go2rtc-ensure", console.go2rtc_ensure),
+        web.post("/api/admin/go2rtc-detect", console.go2rtc_detect),
+        web.get("/go2rtc/api/ws", console.go2rtc_ws),
+        web.get("/go2rtc/{tail:.*}", console.go2rtc_static),
         web.get("/api/ha-image", console.ha_image),
         web.get("/api/people-images/{name}", console.people_image),
         web.post("/api/admin/people-image", console.upload_people_image),
@@ -1146,7 +1232,7 @@ def create_app(data_dir: Path, static_dir: Path | None) -> web.Application:
                 immutable = "assets/" in path.as_posix()
                 return web.FileResponse(path, headers={"Cache-Control": "public, max-age=31536000, immutable" if immutable else "no-cache"})
             return web.FileResponse(static_dir / "index.html", headers={"Cache-Control": "no-cache"})
-        app.router.add_get("/{tail:(?!api/).*}", spa)
+        app.router.add_get("/{tail:(?!api/|go2rtc/).*}", spa)
 
     async def on_startup(_app: web.Application) -> None:
         await console.reconnect()

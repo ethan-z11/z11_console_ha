@@ -16,6 +16,8 @@ export interface AdminSettings {
   seasonRules: boolean;
   /** 音乐页内嵌地址；为空表示未配置。 */
   musicUrl: string;
+  /** go2rtc 流媒体服务地址；为空时摄像头走本机 ffmpeg 转 MJPEG。 */
+  go2rtcUrl: string;
   /** “一键关闭”可关的设备类别；默认只有灯。 */
   allOffKinds: string[];
   /** “一键关闭”可关的区域（房间 ID）；空列表 = 全部房间。 */

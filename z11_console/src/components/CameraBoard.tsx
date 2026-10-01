@@ -119,6 +119,76 @@ function CameraStream({ cameraId, active, fit }: { cameraId: string; active: boo
   );
 }
 
+/**
+ * go2rtc 低延迟画面：后端把摄像头 RTSP 注册成命名流（账密不进浏览器），iframe 加载 go2rtc
+ * 官方播放器，WebRTC → WebRTC/TCP → MSE → HLS → MP4 → MJPEG 自动回退，信令与媒体全走同源
+ * /go2rtc/... 反向代理，天然兼容 Ingress 子路径。注册失败（go2rtc 不可用）自动交回 ffmpeg。
+ */
+function Go2rtcStream({ cameraId, active, fit, onFatal }: { cameraId: string; active: boolean; fit: 'cover' | 'contain'; onFatal: () => void }) {
+  const [stream, setStream] = useState<{ name: string; modes: string } | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!active) {
+      setStream(null);
+      return;
+    }
+    let alive = true;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 10000);
+    setStream(null);
+    fetch(apiPath(`/api/go2rtc-ensure?cid=${encodeURIComponent(cameraId)}`), { signal: controller.signal })
+      .then((response) => response.ok
+        ? response.json() as Promise<{ name: string; modes?: string }>
+        : Promise.reject(new Error(`HTTP ${response.status}`)))
+      .then((data) => { if (alive && data.name) setStream({ name: data.name, modes: data.modes ?? 'webrtc,mse,hls,mjpeg' }); })
+      .catch(() => { if (alive) setFailed(true); });
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [cameraId, active]);
+
+  useEffect(() => {
+    if (failed) onFatal();
+  }, [failed, onFatal]);
+
+  return (
+    <div className={`camera-stream camera-stream--${fit}`}>
+      {!active
+        ? <div className="camera-stream__paused"><Cctv size={26} /><span>画面已暂停</span></div>
+        : stream
+          ? (
+            <>
+              <iframe
+                className="camera-stream__rtc"
+                title="摄像头实时画面"
+                src={apiPath(`/go2rtc/stream.html?src=${encodeURIComponent(stream.name)}&mode=${encodeURIComponent(stream.modes)}`)}
+                allow="autoplay; encrypted-media; fullscreen"
+              />
+              {/* 播放器内部全部模式都失败时（如 WebRTC 端口不通且流异常）给用户一条逃生通道。 */}
+              <button type="button" className="camera-stream__fallback" onClick={onFatal} title="切到本机转码的低清模式（兼容性最好）">低清</button>
+            </>
+          )
+          : (
+            <div className="camera-stream__overlay">
+              <RefreshCw size={20} className="camera-stream__spin" /><span>正在连接 go2rtc…</span>
+            </div>
+          )}
+    </div>
+  );
+}
+
+/** 摄像头画面入口：配置了 go2rtc 走 WebRTC，失败 / 手动切换时回退本机 ffmpeg 转 MJPEG。 */
+function CameraView({ cameraId, active, fit, go2rtcEnabled }: { cameraId: string; active: boolean; fit: 'cover' | 'contain'; go2rtcEnabled: boolean }) {
+  const [forceMjpeg, setForceMjpeg] = useState(false);
+  if (go2rtcEnabled && !forceMjpeg) {
+    return <Go2rtcStream cameraId={cameraId} active={active} fit={fit} onFatal={() => setForceMjpeg(true)} />;
+  }
+  return <CameraStream cameraId={cameraId} active={active} fit={fit} />;
+}
+
 type PtzDirection = 'up' | 'down' | 'left' | 'right';
 
 /** ONVIF 云台十字方向键：按住开始连续转动，松手 / 离开自动停止；弹窗关闭也会补发停止。 */
@@ -284,7 +354,7 @@ function OnvifPanel({ camera }: { camera: CameraConfig }) {
 }
 
 /** 摄像头大画面弹窗：样式沿用设备详情弹窗，画面更大；关闭即停 ffmpeg。 */
-function CameraDialog({ camera, onClose }: { camera: CameraConfig | undefined; onClose: () => void }) {
+function CameraDialog({ camera, go2rtcEnabled, onClose }: { camera: CameraConfig | undefined; go2rtcEnabled: boolean; onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const open = Boolean(camera);
 
@@ -308,7 +378,7 @@ function CameraDialog({ camera, onClose }: { camera: CameraConfig | undefined; o
           <div><small>摄像头{cameraType(camera) === 'onvif' ? ' · ONVIF' : ''}</small><h2>{camera.name}</h2></div>
           <button type="button" className="icon-button" onClick={onClose} aria-label="关闭大画面"><X size={20} /></button>
         </div>
-        <CameraStream cameraId={camera.id} active={open} fit="contain" />
+        <CameraView cameraId={camera.id} active={open} fit="contain" go2rtcEnabled={go2rtcEnabled} />
         {cameraType(camera) === 'onvif' && <OnvifPanel camera={camera} />}
       </>}
     </dialog>,
@@ -317,7 +387,7 @@ function CameraDialog({ camera, onClose }: { camera: CameraConfig | undefined; o
 }
 
 /** 单路摄像头卡片：尺寸等同设备卡“展开”（tile 2×1），点击卡片弹出大画面。 */
-function CameraTile({ camera }: { camera: CameraConfig }) {
+function CameraTile({ camera, go2rtcEnabled }: { camera: CameraConfig; go2rtcEnabled: boolean }) {
   const frameRef = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(false);
   const [pageVisible, setPageVisible] = useState(!document.hidden);
@@ -347,17 +417,17 @@ function CameraTile({ camera }: { camera: CameraConfig }) {
       className="camera-tile-card"
       onOpen={() => setOpen(true)}
     >
-      <CameraStream cameraId={camera.id} active={previewActive} fit="cover" />
+      <CameraView cameraId={camera.id} active={previewActive} fit="cover" go2rtcEnabled={go2rtcEnabled} />
       <div className="camera-tile-card__caption">
         <Cctv size={14} /><span>{camera.name}</span><i className="camera-tile-card__live" aria-label="实时" />
       </div>
-      <CameraDialog camera={open ? camera : undefined} onClose={() => setOpen(false)} />
+      <CameraDialog camera={open ? camera : undefined} go2rtcEnabled={go2rtcEnabled} onClose={() => setOpen(false)} />
     </TileFrame>
   );
 }
 
 /** 摄像头画面板块：放在首页 / 房间页情景板块的上一行；卡片与设备网格同尺寸；没有摄像头时不渲染。 */
-export function CameraBoard({ title, cameras, scale = 1 }: { title: string; cameras: CameraConfig[]; scale?: number }) {
+export function CameraBoard({ title, cameras, scale = 1, go2rtcEnabled = false }: { title: string; cameras: CameraConfig[]; scale?: number; go2rtcEnabled?: boolean }) {
   if (cameras.length === 0) return null;
   return (
     <section className="camera-board">
@@ -366,7 +436,7 @@ export function CameraBoard({ title, cameras, scale = 1 }: { title: string; came
         <span>点击卡片查看大画面</span>
       </div>
       <AdaptiveGrid className="camera-grid" scale={scale}>
-        {cameras.map((camera) => <CameraTile key={camera.id} camera={camera} />)}
+        {cameras.map((camera) => <CameraTile key={camera.id} camera={camera} go2rtcEnabled={go2rtcEnabled} />)}
       </AdaptiveGrid>
     </section>
   );

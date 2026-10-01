@@ -1,8 +1,8 @@
-import { DoorOpen, Grid2x2, History, House, KeyRound, LayoutTemplate, ListChecks, LogOut, Minus, Music, Palette, Plus, Power, RotateCcw, Server, ShieldCheck, Sun, Trash2, Upload, UserPlus, Workflow, X } from 'lucide-react';
+import { Cctv, DoorOpen, Grid2x2, History, House, KeyRound, LayoutTemplate, ListChecks, LogOut, Minus, Music, Palette, Plus, Power, RotateCcw, Server, ShieldCheck, Sun, Trash2, Upload, UserPlus, Workflow, X } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import type { CSSProperties, FormEvent, KeyboardEvent } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { apiPath, ApiError, changePassword, createAccount, deleteAccount, getAccounts, getAudit, getCustom, getEntities, getSettings, updateSettings, uploadPeopleImage } from '../consoleApi';
+import { apiPath, ApiError, changePassword, createAccount, deleteAccount, getAccounts, getAudit, getCustom, getEntities, getSettings, request, updateSettings, uploadPeopleImage } from '../consoleApi';
 import type { AccountInfo, AdminSettings, AuditEntry, DiscoveredEntities, PersonConfig } from '../consoleApi';
 import type { CustomConfig } from '../consoleClient';
 import type { ServerStatus } from '../consoleClient';
@@ -98,6 +98,9 @@ export function SettingsPage({ status, user, firstRun, onLogout, onOpenSetup, on
   const [connectionMessage, setConnectionMessage] = useState<Message>(null);
   const [musicUrl, setMusicUrl] = useState('');
   const [musicMessage, setMusicMessage] = useState<Message>(null);
+  const [go2rtcUrl, setGo2rtcUrl] = useState('');
+  const [go2rtcMessage, setGo2rtcMessage] = useState<Message>(null);
+  const [go2rtcBusy, setGo2rtcBusy] = useState(false);
   const [themeMessage, setThemeMessage] = useState<Message>(null);
   // 格子大小：拖动时本地先显示数值，停下 400ms 后保存；保存后服务推送给所有屏幕。
   const [tileScale, setTileScale] = useState<number | null>(null);
@@ -133,7 +136,7 @@ export function SettingsPage({ status, user, firstRun, onLogout, onOpenSetup, on
     let active = true;
     if (isAdmin) {
       getSettings()
-        .then((loaded) => { if (active) { setSettings(loaded); setHaUrl(loaded.haUrl); setTileScale(loaded.tileScale ?? 100); setMusicUrl(loaded.musicUrl ?? ''); } })
+        .then((loaded) => { if (active) { setSettings(loaded); setHaUrl(loaded.haUrl); setTileScale(loaded.tileScale ?? 100); setMusicUrl(loaded.musicUrl ?? ''); setGo2rtcUrl(loaded.go2rtcUrl ?? ''); } })
         .catch((error: Error) => { if (active) onExpired(error.message); });
       getCustom().then((cfg) => { if (active) setCustom(cfg); }).catch(() => undefined);
       getEntities().then((entities) => { if (active) setDiscovered(entities); }).catch(() => undefined);
@@ -190,6 +193,30 @@ export function SettingsPage({ status, user, firstRun, onLogout, onOpenSetup, on
     const url = musicUrl.trim();
     const ok = await save({ musicUrl: url }, setMusicMessage, url ? '音乐界面地址已保存，侧栏出现“音乐”入口' : '已清空音乐界面，侧栏入口已隐藏');
     if (ok) setMusicUrl(url);
+  }
+
+  /** 保存 go2rtc 地址；服务端保存前会先探测连通性，连不上会返回错误。 */
+  async function saveGo2rtc(event: FormEvent) {
+    event.preventDefault();
+    const url = go2rtcUrl.trim();
+    const ok = await save({ go2rtcUrl: url }, setGo2rtcMessage, url ? 'go2rtc 已连接，摄像头切换为 WebRTC 低延迟画面' : '已关闭 go2rtc，摄像头回到本机转码模式');
+    if (ok) setGo2rtcUrl(url);
+  }
+
+  /** 自动发现（HAOS 加载项内网）或测试手动填写的 go2rtc 地址。 */
+  async function detectGo2rtc() {
+    setGo2rtcBusy(true);
+    setGo2rtcMessage(null);
+    try {
+      const data = await request<{ url: string }>('/api/admin/go2rtc-detect', 'POST', { url: go2rtcUrl.trim() });
+      setGo2rtcUrl(data.url);
+      setGo2rtcMessage({ tone: 'good', text: `已找到 go2rtc：${data.url}，点“保存”后生效` });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) onExpired(error.message);
+      else setGo2rtcMessage({ tone: 'error', text: error instanceof Error ? error.message : '未找到 go2rtc' });
+    } finally {
+      setGo2rtcBusy(false);
+    }
   }
 
   async function savePassword(event: FormEvent) {
@@ -358,6 +385,18 @@ export function SettingsPage({ status, user, firstRun, onLogout, onOpenSetup, on
               <button type="submit" className="small-button small-button--selected">保存连接设置</button>
               {settings.hasToken && <button type="button" className="small-button" onClick={() => save({ clearToken: true }, setConnectionMessage, '已清除令牌并切回演示数据')}>清除令牌</button>}
               <FormMessage message={connectionMessage} />
+            </div>
+          </form>
+          <form className="settings-card" onSubmit={saveGo2rtc}>
+            <div className="settings-card__heading"><span className="tile__chip"><Cctv size={20} /></span><div><h3>摄像头低延迟流媒体（go2rtc）</h3><p>可选。启用后摄像头走 WebRTC（亚秒延迟、有声音、多设备同看不增加负担），自动回退 MSE / MJPEG；留空则由本机 ffmpeg 转码。</p></div></div>
+            <label className="settings-field">
+              <span>go2rtc 服务地址</span>
+              <input type="url" inputMode="url" autoComplete="off" spellCheck={false} placeholder="http://192.168.1.10:1984（留空表示不启用）" value={go2rtcUrl} onChange={(event) => setGo2rtcUrl(event.target.value)} />
+            </label>
+            <div className="settings-actions">
+              <button type="submit" className="small-button small-button--selected">保存</button>
+              <button type="button" className="small-button" disabled={go2rtcBusy} onClick={detectGo2rtc}>{go2rtcBusy ? '检测中…' : '自动发现 / 测试地址'}</button>
+              <FormMessage message={go2rtcMessage} />
             </div>
           </form>
         </>}
