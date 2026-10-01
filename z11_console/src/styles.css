@@ -905,6 +905,15 @@ strong { font-weight: 600; }
   .light-detail-dialog, .device-dialog { width: 100vw; max-width: 100vw; margin: auto 0 0; border-radius: 26px 26px 0 0; padding-bottom: calc(22px + env(safe-area-inset-bottom)); }
   .light-detail-dialog[open], .device-dialog[open] { animation: sheet-in .28s var(--ease) both; }
 }
+
+/* 沉浸模式（kiosk.ts 隐藏 HA 顶栏后给 <html> 加 .z11-kiosk）：底部不再为 iPhone 手势条留白，
+   导航贴底、内容铺满整个面板。仅影响 HA Ingress 里开启沉浸模式的场景，普通浏览保持原样。 */
+@media (max-width: 720px) {
+  html.z11-kiosk .app-shell { padding-bottom: 68px; }
+  html.z11-kiosk .side-nav { padding-bottom: 6px; }
+  html.z11-kiosk .toast { bottom: 80px; }
+  html.z11-kiosk .light-detail-dialog, html.z11-kiosk .device-dialog { padding-bottom: 22px; }
+}
 @media (max-width: 390px) {
   .hero__actions { gap: 4px; }
   .hero__brand { display: none; }
