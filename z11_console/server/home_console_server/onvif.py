@@ -15,6 +15,7 @@ import asyncio
 import base64
 import logging
 import secrets
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from urllib.parse import quote, urlsplit, urlunsplit
@@ -40,6 +41,7 @@ _ENVELOPE_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
 <s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"
  xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"
  xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+ xmlns:wsa="http://www.w3.org/2005/08/addressing"
  xmlns:tt="http://www.onvif.org/ver10/schema"
  xmlns:tds="http://www.onvif.org/ver10/device/wsdl"
  xmlns:trt="http://www.onvif.org/ver10/media/wsdl"
@@ -53,6 +55,9 @@ _ENVELOPE_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
         <wsu:Created>{created}</wsu:Created>
       </wsse:UsernameToken>
     </wsse:Security>
+    <wsa:Action>{action}</wsa:Action>
+    <wsa:To>{to}</wsa:To>
+    <wsa:MessageID>urn:uuid:{message_id}</wsa:MessageID>
   </s:Header>
   <s:Body>
 {body}
@@ -98,7 +103,7 @@ class OnvifClient:
         self.device_url = f"http://{host}:{port}/onvif/device_service"
         self._session = session
 
-    def _envelope(self, body: str) -> str:
+    def _envelope(self, body: str, action: str = "", to: str = "") -> str:
         nonce = secrets.token_bytes(16)
         created = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         digest = base64.b64encode(
@@ -109,11 +114,14 @@ class OnvifClient:
             digest=digest,
             nonce=base64.b64encode(nonce).decode("ascii"),
             created=created,
+            action=action,
+            to=to,
+            message_id=str(uuid.uuid4()),
             body=body,
         )
 
     async def _call(self, url: str, soap_action: str, body: str) -> ET.Element:
-        payload = self._envelope(body)
+        payload = self._envelope(body, soap_action, url)
         headers = {
             "Content-Type": "application/soap+xml; charset=utf-8",
             "SOAPAction": f'"{soap_action}"',

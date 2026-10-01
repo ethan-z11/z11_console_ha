@@ -172,29 +172,46 @@ class MotionScreenshotter:
         return self._occupied(str(camera.get("scope") or "home"))
 
     async def _run_events(self, camera_id: str, name: str, camera: dict, rtsp_url: str, stop_event: asyncio.Event) -> None:
-        pullpoint_url = await self._onvif.event_pullpoint(camera)
         last_capture = 0.0
+        failures = 0
         while not stop_event.is_set():
             try:
-                messages = await asyncio.wait_for(
-                    self._onvif.pull_messages(camera, pullpoint_url, timeout_seconds=30), timeout=35.0)
-            except asyncio.TimeoutError:
+                pullpoint_url = await self._onvif.event_pullpoint(camera)
+            except OnvifError as error:
+                failures += 1
+                if failures >= 3:
+                    raise
+                log.info("摄像头 %s 创建事件订阅失败（%s），3 秒后重试", name, error)
+                await asyncio.sleep(3)
                 continue
-            except OnvifError:
-                # 事件拉取失败（如某些固件 PullPoint 会话不持久），交给外层回退到帧差兜底。
-                raise
-            if not self._is_motion(messages):
-                continue
-            # 门控放在冷却计时之前：无人期间的事件不占用冷却窗口，人来后第一次运动即可抓拍。
-            if not self._motion_allowed(camera):
-                continue
-            now = time.monotonic()
-            if now - last_capture < CAPTURE_COOLDOWN:
-                continue
-            last_capture = now
-            # 触发瞬间抓一张，2 秒后再抓一张。
-            self._schedule_capture(camera_id, name, rtsp_url)
-            self._schedule_capture(camera_id, name, rtsp_url, delay=SECOND_CAPTURE_DELAY)
+            failures = 0
+            while not stop_event.is_set():
+                try:
+                    messages = await asyncio.wait_for(
+                        self._onvif.pull_messages(camera, pullpoint_url, timeout_seconds=30), timeout=35.0)
+                except asyncio.TimeoutError:
+                    continue
+                except OnvifError as error:
+                    # 订阅过期（部分固件 TTL 约 1 分钟且不支持 Renew）或会话失效：重建订阅；
+                    # 连续 3 次失败才交给外层回退到帧差兜底。
+                    failures += 1
+                    if failures >= 3:
+                        raise
+                    log.info("摄像头 %s 事件拉取失败（%s），重建订阅", name, error)
+                    break
+                failures = 0
+                if not self._is_motion(messages):
+                    continue
+                # 门控放在冷却计时之前：无人期间的事件不占用冷却窗口，人来后第一次运动即可抓拍。
+                if not self._motion_allowed(camera):
+                    continue
+                now = time.monotonic()
+                if now - last_capture < CAPTURE_COOLDOWN:
+                    continue
+                last_capture = now
+                # 触发瞬间抓一张，2 秒后再抓一张。
+                self._schedule_capture(camera_id, name, rtsp_url)
+                self._schedule_capture(camera_id, name, rtsp_url, delay=SECOND_CAPTURE_DELAY)
 
     async def _run_ffmpeg_fallback(self, camera_id: str, name: str, rtsp_url: str, stop_event: asyncio.Event) -> None:
         """摄像头不支持 ONVIF 事件时的兜底：用 ffmpeg 压成低帧率灰度流做相邻帧差。"""
