@@ -312,8 +312,6 @@ class Settings:
     all_off_entities: list[str] = field(default_factory=list)
     # 人员在家配置：每人 id/name/entityId/image(自定义图片名,null=默认)/homeStates(判定在家的状态值列表)
     people: list[dict[str, Any]] = field(default_factory=list)
-    # HA 首页跳转：开启后打开 HA 落在默认仪表盘时自动进入本面板（见 home_redirect.py）
-    home_redirect: bool = False
 
     def filter(self) -> dict[str, Any]:
         return {"mode": self.filter_mode, "blacklist": self.blacklist, "whitelist": self.whitelist}
@@ -336,7 +334,6 @@ class Settings:
             "allOffScopes": self.all_off_scopes,
             "allOffEntities": self.all_off_entities,
             "people": self.people,
-            "homeRedirect": self.home_redirect,
         }
 
 
@@ -430,7 +427,6 @@ class Store:
             all_off_scopes=id_list(raw.get("allOffScopes")) or [],
             all_off_entities=id_list(raw.get("allOffEntities")) or [],
             people=raw.get("people") if isinstance(raw.get("people"), list) else [],
-            home_redirect=raw.get("homeRedirect") is True,
         )
 
     def _save(self, settings: Settings) -> None:
@@ -454,7 +450,6 @@ class Store:
             "allOffScopes": settings.all_off_scopes,
             "allOffEntities": settings.all_off_entities,
             "people": settings.people,
-            "homeRedirect": settings.home_redirect,
         }
         _write_private(self.settings_path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
 

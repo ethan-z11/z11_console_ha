@@ -1,5 +1,5 @@
 name: Z11 Console
-version: "1.0.7"
+version: "1.0.5"
 slug: z11_console
 description: 轻量家居控制台：房间设备卡片、温湿度、摄像头、天气、扫地机地图，内嵌于 Home Assistant 侧边栏，自动连接本机 HA，无需配置令牌。
 url: https://github.com/ethan-z11/z11_console_ha
@@ -10,8 +10,6 @@ image: ghcr.io/ethan-z11/{arch}-z11_console_ha
 init: false
 startup: application
 homeassistant_api: true
-map:
-  - homeassistant_config:rw
 ingress: true
 ingress_port: 8765
 panel_icon: mdi:view-dashboard-outline

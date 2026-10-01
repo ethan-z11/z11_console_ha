@@ -24,8 +24,6 @@ export interface AdminSettings {
   allOffEntities: string[];
   /** 人员在家配置列表。 */
   people: PersonConfig[];
-  /** 设为 HA 首页：开启后打开 HA 落在默认仪表盘时自动进入本面板。 */
-  homeRedirect: boolean;
   season: Season | null;
   seasonSync: { state: 'idle' | 'demo' | 'waiting' | 'syncing' | 'off' | 'ok' | 'pending' | 'error'; message: string };
 }

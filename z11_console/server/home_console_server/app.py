@@ -33,7 +33,6 @@ from .automations import DOMAIN as AUTOMATION_DOMAIN, build_automations, demo_au
 from .cameras import BOUNDARY as CAMERA_BOUNDARY, CameraStreamer
 from .discovery import SCENE_DOMAINS, build_catalogue, filtered, visible_ids
 from .ha import HaUpstream
-from .home_redirect import set_home_redirect
 from .motion import PTZ_DIRECTIONS, MotionScreenshotter
 from .onvif import OnvifError, OnvifManager
 from .season import HELPER_ENTITY as SEASON_HELPER, SEASONS, SeasonRules
@@ -223,12 +222,6 @@ class ConsoleServer:
     async def _on_status(self, status: dict[str, Any]) -> None:
         if status["kind"] == "connected":
             self.schedule_refresh(fetch=True)
-            # 开关开着时每次连接都重写跳转脚本：加载项升级后脚本模板可能已更新，无需用户重开开关。
-            if self.store.settings.home_redirect:
-                try:
-                    await set_home_redirect(self.upstream, True)
-                except Exception as exc:
-                    log.warning("应用 HA 首页跳转失败：%s", exc)
         elif status["kind"] in ("disabled", "unconfigured", "auth_failed"):
             self.registries = None
             self.known_ids = set()
@@ -302,7 +295,6 @@ class ConsoleServer:
                 "homeTitle": settings.home_title, "brandTitle": settings.brand_title, "theme": settings.theme,
                 "tileScale": settings.tile_scale, "accent": settings.accent, "season": self.season.season(),
                 "musicUrl": settings.music_url,
-                "homeRedirect": settings.home_redirect,
                 "allOffKinds": settings.all_off_kinds, "allOffScopes": settings.all_off_scopes,
                 "allOffEntities": settings.all_off_entities,
                 "people": self._people_status(),
@@ -806,16 +798,6 @@ class ConsoleServer:
         if isinstance(body.get("controlEnabled"), bool) and body["controlEnabled"] != settings.control_enabled:
             settings.control_enabled = body["controlEnabled"]
             changed.append("controlEnabled")
-        if "homeRedirect" in body:
-            if not isinstance(body["homeRedirect"], bool):
-                return web.json_response({"error": "参数错误"}, status=400)
-            if body["homeRedirect"] != settings.home_redirect:
-                try:
-                    await set_home_redirect(self.upstream, body["homeRedirect"])
-                except Exception as exc:
-                    return web.json_response({"error": f"设置首页失败：{exc}"}, status=409)
-                settings.home_redirect = body["homeRedirect"]
-                changed.append("homeRedirect")
         if body.get("dataSource") in ("demo", "live") and body["dataSource"] != settings.data_source:
             if body["dataSource"] == "live" and not (settings.ha_url and settings.token_encrypted):
                 return web.json_response({"error": "请先保存 HA 地址和令牌"}, status=400)
