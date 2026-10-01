@@ -30,7 +30,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     HOME_CONSOLE_STATIC=/app/dist
 
 # cryptography / aiohttp 用 Alpine 预编译包，覆盖全部架构，避免 pip 拉源码编译。
-RUN apk add --no-cache python3 py3-aiohttp py3-cryptography
+# ffmpeg：摄像头 RTSP → MJPEG 实时转码、ONVIF 不支持事件时的帧差检测都依赖它。
+RUN apk add --no-cache python3 py3-aiohttp py3-cryptography ffmpeg
 
 WORKDIR /app/server
 
