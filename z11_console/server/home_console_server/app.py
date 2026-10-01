@@ -198,7 +198,8 @@ class ConsoleServer:
         # ONVIF 摄像头：探测取流地址 / 云台能力；运动检测截图存 data/camera-shots/。
         self.onvif = OnvifManager()
         self.shots_dir = data_dir / "camera-shots"
-        self.motion = MotionScreenshotter(self.camera_streamer.ffmpeg_path, self.shots_dir, self._camera_rtsp_url, self.onvif)
+        self.motion = MotionScreenshotter(self.camera_streamer.ffmpeg_path, self.shots_dir, self._camera_rtsp_url, self.onvif,
+                                          occupied=self._scope_occupied)
 
     def _camera_entry(self, camera_id: str) -> dict[str, Any] | None:
         return next((item for item in self.store.custom.get("cameras", []) if item.get("id") == camera_id), None)
@@ -364,6 +365,11 @@ class ConsoleServer:
                     break
             result[scope] = occupied
         return result
+
+    def _scope_occupied(self, scope: str) -> bool:
+        """运动抓拍的有人门控：区域配置了有人传感器时按实时状态判断；
+        未配置传感器的区域返回 True（放行，保持原来的始终抓拍行为）。"""
+        return self._occupancy_status().get(scope, True)
 
     async def camera_stream(self, request: web.Request) -> web.StreamResponse | web.Response:
         """GET /api/camera-stream?cid=…：把自定义摄像头的 RTSP 转成 MJPEG 推给 <img>。

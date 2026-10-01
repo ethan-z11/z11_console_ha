@@ -9,6 +9,8 @@ Motion 事件，我们收到后抓拍一张“触发瞬间”的截图，并在 
 - 保存位置：<数据目录>/camera-shots/<摄像头id>/YYYYmmdd_HHMMSS[_n].jpg
 - 保留策略：超过 3 天（72 小时）自动删除；每台摄像头最多保留 300 张，超出删最旧的
 - 摄像头删除 / 改为 RTSP 后自动停止对应的监测进程
+- 有人联动：摄像头所在区域（custom.occupancy）配置了有人传感器时，只有区域有人
+  才抓拍；未配置传感器的区域保持原行为（检测到运动就抓拍）
 """
 
 from __future__ import annotations
@@ -55,11 +57,14 @@ class MotionScreenshotter:
                  ffmpeg_path: str | None,
                  shots_dir: Path,
                  resolve_rtsp: Callable[[dict], Awaitable[str]],
-                 onvif: OnvifManager) -> None:
+                 onvif: OnvifManager,
+                 occupied: Callable[[str], bool] | None = None) -> None:
         self._ffmpeg_path = ffmpeg_path
         self._shots_dir = shots_dir
         self._resolve_rtsp = resolve_rtsp
         self._onvif = onvif
+        # 有人联动：传入 scope → 是否有人（区域未配置传感器时实现方应返回 True 放行）。
+        self._occupied = occupied
         self._tasks: dict[str, asyncio.Task[None]] = {}
         self._stop_events: dict[str, asyncio.Event] = {}
         # 抓拍是“发射后不管”的任务，必须持有强引用，否则可能被 GC 提前回收。
@@ -160,6 +165,12 @@ class MotionScreenshotter:
         finally:
             log.info("摄像头 %s 的运动监测已停止", name)
 
+    def _motion_allowed(self, camera: dict) -> bool:
+        """有人联动门控：所在区域配置了有人传感器时，只有区域有人才允许抓拍。"""
+        if self._occupied is None:
+            return True
+        return self._occupied(str(camera.get("scope") or "home"))
+
     async def _run_events(self, camera_id: str, name: str, camera: dict, rtsp_url: str, stop_event: asyncio.Event) -> None:
         pullpoint_url = await self._onvif.event_pullpoint(camera)
         last_capture = 0.0
@@ -173,6 +184,9 @@ class MotionScreenshotter:
                 # 事件拉取失败（如某些固件 PullPoint 会话不持久），交给外层回退到帧差兜底。
                 raise
             if not self._is_motion(messages):
+                continue
+            # 门控放在冷却计时之前：无人期间的事件不占用冷却窗口，人来后第一次运动即可抓拍。
+            if not self._motion_allowed(camera):
                 continue
             now = time.monotonic()
             if now - last_capture < CAPTURE_COOLDOWN:
@@ -221,7 +235,7 @@ class MotionScreenshotter:
                 previous = frame
                 motion_streak = motion_streak + 1 if ratio >= MOTION_RATIO else 0
                 now = time.monotonic()
-                if motion_streak >= MOTION_FRAMES and now - last_capture >= CAPTURE_COOLDOWN:
+                if motion_streak >= MOTION_FRAMES and now - last_capture >= CAPTURE_COOLDOWN and self._motion_allowed(camera):
                     motion_streak = 0
                     last_capture = now
                     self._schedule_capture(camera_id, name, rtsp_url)
