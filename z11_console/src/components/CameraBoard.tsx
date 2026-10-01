@@ -223,6 +223,35 @@ function ShotStrip({ cameraId, onSelect }: { cameraId: string; onSelect: (shot: 
   );
 }
 
+/** 运动截图大图。
+ * 必须用原生 <dialog showModal>：大画面弹窗本身就是模态 dialog，处于浏览器 top layer，
+ * 普通 fixed + z-index 元素永远渲染在它下面（大图压在卡片背后的原因）；嵌套模态 dialog 会自动叠在上层。 */
+function ShotViewer({ camera, shot, onClose }: { camera: CameraConfig; shot: ShotInfo; onClose: () => void }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) openModalQuietly(dialog);
+  }, []);
+
+  return createPortal(
+    <dialog
+      ref={dialogRef}
+      className="camera-shot-viewer"
+      onClose={() => { onClose(); releasePointerFocus(); }}
+      onCancel={onClose}
+      onClick={(event) => { if (event.target === dialogRef.current) onClose(); }}
+    >
+      <button type="button" className="icon-button camera-shot-viewer__close" onClick={onClose} aria-label="关闭截图"><X size={20} /></button>
+      <figure>
+        <img src={apiPath(`/api/camera-shot?cid=${encodeURIComponent(camera.id)}&file=${encodeURIComponent(shot.file)}`)} alt={`运动截图 ${shot.time}`} />
+        <figcaption>{camera.name} · {shot.time}</figcaption>
+      </figure>
+    </dialog>,
+    document.body,
+  );
+}
+
 /** 大画面弹窗里的 ONVIF 专属区域：云台方向键（设备支持时）+ 运动截图浏览。 */
 function OnvifPanel({ camera }: { camera: CameraConfig }) {
   const [ptz, setPtz] = useState<boolean | null>(null);
@@ -249,16 +278,7 @@ function OnvifPanel({ camera }: { camera: CameraConfig }) {
       <div className="camera-dialog__shots">
         <ShotStrip cameraId={camera.id} onSelect={setSelected} />
       </div>
-      {selected && createPortal(
-        <div className="camera-shot-viewer" onClick={() => setSelected(null)} role="dialog" aria-modal="true" aria-label="运动截图大图">
-          <button type="button" className="icon-button camera-shot-viewer__close" onClick={() => setSelected(null)} aria-label="关闭截图"><X size={20} /></button>
-          <figure onClick={(event) => event.stopPropagation()}>
-            <img src={apiPath(`/api/camera-shot?cid=${encodeURIComponent(camera.id)}&file=${encodeURIComponent(selected.file)}`)} alt={`运动截图 ${selected.time}`} />
-            <figcaption>{camera.name} · {selected.time}</figcaption>
-          </figure>
-        </div>,
-        document.body,
-      )}
+      {selected && <ShotViewer camera={camera} shot={selected} onClose={() => setSelected(null)} />}
     </div>
   );
 }

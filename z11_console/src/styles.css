@@ -298,7 +298,9 @@ strong { font-weight: 600; }
 .camera-shots__item:hover { border-color: var(--glow, #74b6e8); }
 .camera-shots__item img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #0c1014; }
 .camera-shots__item span { display: block; padding: 4px 7px; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.camera-shot-viewer { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(5, 8, 12, .82); }
+/* 大图是原生 <dialog>：清掉浏览器默认的边框 / 白底 / 尺寸限制，自己铺满视口。 */
+.camera-shot-viewer { width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; border: 0; padding: 24px; background: rgba(5, 8, 12, .82); display: flex; align-items: center; justify-content: center; }
+.camera-shot-viewer::backdrop { background: transparent; }
 .camera-shot-viewer figure { margin: 0; max-width: min(1100px, 94vw); max-height: 90vh; display: flex; flex-direction: column; gap: 10px; }
 .camera-shot-viewer img { max-width: 100%; max-height: 82vh; object-fit: contain; border-radius: 14px; border: 1px solid var(--hairline-strong); }
 .camera-shot-viewer figcaption { text-align: center; font-size: 13px; color: #cdd8e3; }
