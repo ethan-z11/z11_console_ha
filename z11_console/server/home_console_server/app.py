@@ -223,6 +223,12 @@ class ConsoleServer:
     async def _on_status(self, status: dict[str, Any]) -> None:
         if status["kind"] == "connected":
             self.schedule_refresh(fetch=True)
+            # 开关开着时每次连接都重写跳转脚本：加载项升级后脚本模板可能已更新，无需用户重开开关。
+            if self.store.settings.home_redirect:
+                try:
+                    await set_home_redirect(self.upstream, True)
+                except Exception as exc:
+                    log.warning("应用 HA 首页跳转失败：%s", exc)
         elif status["kind"] in ("disabled", "unconfigured", "auth_failed"):
             self.registries = None
             self.known_ids = set()
