@@ -277,6 +277,7 @@ strong { font-weight: 600; }
 .camera-tile-card__caption span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .camera-tile-card__caption svg { flex: none; }
 .camera-tile-card__live { width: 7px; height: 7px; margin-left: auto; flex: none; border-radius: 50%; background: #e5484d; box-shadow: 0 0 0 0 rgba(229, 72, 77, .6); animation: live-pulse 1.6s infinite; }
+.camera-tile-card__shield { position: absolute; inset: 0; z-index: 1; padding: 0; border: 0; background: transparent; cursor: pointer; }
 @keyframes live-pulse { 0% { box-shadow: 0 0 0 0 rgba(229, 72, 77, .55); } 70% { box-shadow: 0 0 0 7px rgba(229, 72, 77, 0); } 100% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0); } }
 
 /* 大画面弹窗：沿用设备详情弹窗，宽度加大到 760，画面 16:9（双类提高特异性，压过 .device-dialog 的 440px） */
@@ -295,10 +296,11 @@ strong { font-weight: 600; }
 .camera-ptz__center { display: flex; align-items: center; justify-content: center; color: var(--text-3); }
 .camera-ptz__hint { margin: 8px 0 0; font-size: 11px; color: var(--text-3); }
 .camera-ptz__error { margin: 6px 0 0; font-size: 11px; color: var(--alert-text, #ff8a80); }
-.camera-shots { min-width: 0; }
+.camera-shots { min-width: 0; max-width: 100%; }
+.camera-dialog__shots { min-width: 0; max-width: 100%; }
 .camera-shots h4 em { margin-left: auto; font-style: normal; font-size: 11px; font-weight: 400; color: var(--text-3); }
 .camera-shots__empty { margin: 0; padding: 16px; border: 1px dashed var(--hairline-strong); border-radius: 14px; font-size: 12px; color: var(--text-3); text-align: center; }
-.camera-shots__strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
+.camera-shots__strip { display: flex; gap: 10px; max-width: 100%; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
 .camera-shots__item { flex: none; width: 106px; padding: 0; border: 1px solid var(--hairline-strong); border-radius: 12px; overflow: hidden; background: var(--surface-2); color: var(--text-3); text-align: left; cursor: pointer; transition: border-color .15s; }
 .camera-shots__item:hover { border-color: var(--glow, #74b6e8); }
 .camera-shots__item img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #0c1014; }
@@ -310,7 +312,7 @@ strong { font-weight: 600; }
 .camera-shot-viewer img { max-width: 100%; max-height: 82vh; object-fit: contain; border-radius: 14px; border: 1px solid var(--hairline-strong); }
 .camera-shot-viewer figcaption { text-align: center; font-size: 13px; color: #cdd8e3; }
 .camera-shot-viewer__close { position: absolute; top: 18px; right: 20px; color: #e8eef5; background: rgba(255, 255, 255, .1); }
-@media (max-width: 620px) { .camera-dialog__onvif { grid-template-columns: 1fr; } .camera-ptz__pad { max-width: 240px; margin: 0 auto; } .camera-ptz__key { height: 58px; } }
+@media (max-width: 620px) { .device-dialog.camera-dialog { width: 100vw; max-width: 100vw; margin: auto 0 0; border-radius: 26px 26px 0 0; } .camera-dialog__onvif { grid-template-columns: minmax(0, 1fr); } .camera-ptz__pad { max-width: 240px; margin: 0 auto; } .camera-ptz__key { height: 58px; } }
 
 .camera-manage-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .camera-manage-list li { display: grid; grid-template-columns: minmax(0, 160px) minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }

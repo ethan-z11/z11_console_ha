@@ -418,6 +418,8 @@ function CameraTile({ camera, go2rtcEnabled }: { camera: CameraConfig; go2rtcEna
       onOpen={() => setOpen(true)}
     >
       <CameraView cameraId={camera.id} active={previewActive} fit="cover" go2rtcEnabled={go2rtcEnabled} />
+      {/* go2rtc 的 iframe 会吞掉点击（变成播放器自己的控制），盖一层透明按钮恢复“点击开大画面”。 */}
+      {go2rtcEnabled && <button type="button" className="camera-tile-card__shield" onClick={() => setOpen(true)} aria-label={`打开${camera.name}大画面`} />}
       <div className="camera-tile-card__caption">
         <Cctv size={14} /><span>{camera.name}</span><i className="camera-tile-card__live" aria-label="实时" />
       </div>
