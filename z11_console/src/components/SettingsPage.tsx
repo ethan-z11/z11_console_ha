@@ -359,6 +359,11 @@ export function SettingsPage({ status, user, firstRun, onLogout, onOpenSetup, on
               {settings.hasToken && <button type="button" className="small-button" onClick={() => save({ clearToken: true }, setConnectionMessage, '已清除令牌并切回演示数据')}>清除令牌</button>}
               <FormMessage message={connectionMessage} />
             </div>
+            <div className="settings-row">
+              <span id={`${formId}-home-redirect`}>设为 HA 首页</span>
+              <button type="button" role="switch" className="settings-switch" aria-checked={settings.homeRedirect} aria-labelledby={`${formId}-home-redirect`} onClick={() => void save({ homeRedirect: !settings.homeRedirect }, setConnectionMessage, settings.homeRedirect ? '已关闭首页跳转' : '已开启：打开 HA 会自动进入本面板')}><span /></button>
+            </div>
+            <p className="settings-message">开启后，任何设备打开 HA 落在默认仪表盘时都会自动跳转到本控制台；关闭即恢复。</p>
           </form>
         </>}
 
