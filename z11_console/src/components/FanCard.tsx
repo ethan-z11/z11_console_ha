@@ -37,6 +37,12 @@ export function FanCard({ layout, fan, room, onToggle, onSpeed, onPreset, onOsci
     : fan.on
       ? `已打开${fan.percentage !== undefined ? ` · ${fan.percentage}%` : ''}${fan.oscillating ? ' · 摇头中' : ''}${fan.presetMode ? ` · ${fan.presetMode}` : ''}`
       : '已关闭';
+  // 小卡片状态只保留风速；摇头 / 风类在小卡弹窗里控制，不在状态行重复。
+  const compactStatus = !fan.available
+    ? '设备不可用'
+    : fan.on
+      ? `已打开${fan.percentage !== undefined ? ` · ${fan.percentage}%` : ''}`
+      : '已关闭';
   const rangeStyle = { '--range-progress': `${fan.on ? percentage : 0}%` } as CSSProperties;
   const detailId = useId();
   const detailRef = useRef<HTMLDialogElement>(null);
@@ -87,7 +93,7 @@ export function FanCard({ layout, fan, room, onToggle, onSpeed, onPreset, onOsci
             </div>
           )}
         </div>
-      ) : <div className="light-card__compact-bottom"><div className="light-card__identity"><span className="tile__room tile__room--inline" aria-hidden="true">{room.name}</span><span className="tile__name">{fan.name}</span><span className="tile__note">{status}</span></div>
+      ) : <div className="light-card__compact-bottom"><div className="light-card__identity"><span className="tile__room tile__room--inline" aria-hidden="true">{room.name}</span><span className="tile__name">{fan.name}</span><span className="tile__note">{compactStatus}</span></div>
         {compact && !editing && <button type="button" className="light-card__settings" onClick={() => setDetailOpen(true)} disabled={!fan.available} aria-label={`设置${room.name}${fan.name}风速、摇头和风类`} aria-haspopup="dialog" aria-controls={detailOpen ? detailId : undefined}><SlidersHorizontal size={18} /></button>}
       </div>}
     </TileFrame>
