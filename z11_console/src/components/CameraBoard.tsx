@@ -392,8 +392,9 @@ function CameraTile({ camera, go2rtcEnabled }: { camera: CameraConfig; go2rtcEna
   const [visible, setVisible] = useState(false);
   const [pageVisible, setPageVisible] = useState(!document.hidden);
   const [open, setOpen] = useState(false);
-  // 弹窗打开时由大画面接管取流，卡片预览暂停，避免同一路开两个 ffmpeg。
-  const previewActive = visible && pageVisible && !open;
+  // MJPEG 转码每路一个 ffmpeg 进程，弹窗打开时暂停卡片预览；go2rtc 是单路上游多路分发，
+  // 卡片不断流可避免弹窗开关瞬间摄像头 RTSP 断开重连（部分摄像头只允许一路并发，重连会被拒）。
+  const previewActive = visible && pageVisible && (!open || go2rtcEnabled);
 
   useEffect(() => {
     const frame = frameRef.current;
