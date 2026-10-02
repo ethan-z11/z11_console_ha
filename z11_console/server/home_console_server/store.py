@@ -232,6 +232,10 @@ def clean_custom(raw: Any, known_rooms: set[str] | None = None, known_entities: 
                     and 1 <= len(username) <= CUSTOM_CAMERA_USER_MAX and len(password) <= CUSTOM_CAMERA_PASSWORD_MAX):
                 entry = {"id": camera_id, "name": name, "type": "onvif", "host": host, "port": port,
                          "username": username, "password": password, "scope": scope}
+                # 可选画面地址：ONVIF 探测的取流地址不可用（单路并发限制等）时手动指定播放地址；云台与事件仍走 ONVIF。
+                rtsp_url = str(item.get("rtspUrl", "")).strip() if isinstance(item.get("rtspUrl"), str) else ""
+                if rtsp_url and RTSP_URL_RE.fullmatch(rtsp_url) and len(rtsp_url) <= CUSTOM_CAMERA_URL_MAX:
+                    entry["rtspUrl"] = rtsp_url
         if entry is not None:
             camera_ids.add(camera_id)
             cameras.append(entry)

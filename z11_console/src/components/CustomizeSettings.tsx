@@ -483,7 +483,7 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
       setCameraUser('');
       setCameraPassword('');
     } else {
-      setCameraUrl('');
+      setCameraUrl(camera.rtspUrl ?? '');
       setCameraHost(camera.host ?? '');
       setCameraPort(String(camera.port ?? 8000));
       setCameraUser(camera.username ?? '');
@@ -512,7 +512,9 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
       if (!Number.isInteger(port) || port < 1 || port > 65535) { setCameraError('端口需为 1–65535 的数字（ONVIF 常见为 8000）'); return; }
       if (!username || username.length > 64) { setCameraError('请填写 ONVIF 登录用户名'); return; }
       if (password.length > 128) { setCameraError('登录密码最多 128 个字'); return; }
-      entry = { id: editingCameraId ?? newId('c'), name, type: 'onvif', host, port, username, password, scope: cameraScope };
+      const url = cameraUrl.trim();
+      if (url && (!/^rtsp:\/\//i.test(url) || url.length > 300 || /\s/.test(url))) { setCameraError('画面地址需以 rtsp:// 开头（不含空格），或留空由 ONVIF 自动探测'); return; }
+      entry = { id: editingCameraId ?? newId('c'), name, type: 'onvif', host, port, username, password, scope: cameraScope, ...(url ? { rtspUrl: url } : {}) };
     }
     const cameras = editingCameraId
       ? custom.cameras.map((camera) => (camera.id === editingCameraId ? entry : camera))
@@ -791,6 +793,10 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
               <label className="settings-field">
                 <span>密码（只存在服务器）</span>
                 <input type="password" autoComplete="new-password" placeholder="ONVIF 登录密码" value={cameraPassword} onChange={(event) => { setCameraPassword(event.target.value); setCameraError(null); }} />
+              </label>
+              <label className="settings-field settings-field--wide">
+                <span>画面地址（可选；探测的地址不可用或只能单路播放时手动指定）</span>
+                <input type="text" spellCheck={false} placeholder="rtsp://用户名:密码@192.168.1.20:554/stream1，留空自动探测" value={cameraUrl} onChange={(event) => { setCameraUrl(event.target.value); setCameraError(null); }} />
               </label>
             </>
           )}

@@ -207,7 +207,14 @@ class ConsoleServer:
         return next((item for item in self.store.custom.get("cameras", []) if item.get("id") == camera_id), None)
 
     async def _camera_rtsp_url(self, camera: dict[str, Any]) -> str:
-        """按摄像头配置拿到可直接喂给 ffmpeg 的 RTSP 地址：RTSP 类型直取，ONVIF 类型动态探测。"""
+        """按摄像头配置拿到可直接喂给 ffmpeg 的 RTSP 地址。
+
+        手动填写的 rtspUrl 优先（ONVIF 摄像头也可显式指定画面地址，绕开探测失败 / 单路并发限制）；
+        否则 RTSP 类型直取，ONVIF 类型动态探测。
+        """
+        manual = str(camera.get("rtspUrl") or "").strip()
+        if manual:
+            return manual
         if camera.get("type") == "onvif":
             return (await self.onvif.resolve(camera)).rtsp_url
         return str(camera["rtspUrl"])
