@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp, Cctv, DoorOpen, Droplets, House, Pencil, PersonStanding, Plus, Search, Sparkles, Thermometer, Trash2, X } from 'lucide-react';
+import { CollapsibleCard } from './CollapsibleCard';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { ApiError, getCustom, getEntities, putCustom } from '../consoleApi';
@@ -580,9 +581,7 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
 
   return (
     <>
-      <section className="settings-card">
-        <div className="settings-card__heading"><span className="tile__chip"><DoorOpen size={20} /></span><div><h3>房间与设备</h3></div></div>
-
+      <CollapsibleCard icon={DoorOpen} title="房间与设备">
         <div className="custom-add-row">
           <input type="text" maxLength={ROOM_NAME_MAX} placeholder="新房间名称，如：客厅" value={newRoomName} onChange={(event) => { setNewRoomName(event.target.value); setError(null); }} onKeyDown={(event) => { if (event.key === 'Enter') event.preventDefault(); }} aria-label="新房间名称" />
           <button type="button" className="small-button small-button--selected" onClick={addRoom} disabled={!newRoomName.trim()}><Plus size={15} />新建房间</button>
@@ -617,10 +616,9 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
         )}
         {error && <p className="settings-message settings-message--error" role="alert">{error}</p>}
         {message && <p className="settings-message settings-message--good" role="status">{message}</p>}
-      </section>
+      </CollapsibleCard>
 
-      <section className="settings-card">
-        <div className="settings-card__heading"><span className="tile__chip"><Thermometer size={20} /></span><div><h3>温湿度来源</h3></div></div>
+      <CollapsibleCard icon={Thermometer} title="温湿度来源">
         {metricCandidates.temperature.length + metricCandidates.humidity.length === 0
           ? <p className="settings-message">当前没有发现带温度 / 湿度数值的在线实体（空调、温湿度传感器等）。</p>
           : (
@@ -645,10 +643,10 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
               ))}
             </ul>
           )}
-      </section>
+      </CollapsibleCard>
 
-      <section className="settings-card">
-        <div className="settings-card__heading"><span className="tile__chip"><PersonStanding size={20} /></span><div><h3>区域有人传感器</h3><p>为每个区域选择人在 / 存在 / 移动传感器（binary_sensor 或 sensor）。可多选，只要其中一个显示有人，该区域就显示有人。</p></div></div>
+      <CollapsibleCard icon={PersonStanding} title="区域有人传感器">
+        <p className="settings-message">为每个区域选择人在 / 存在 / 移动传感器（binary_sensor 或 sensor）。可多选，只要其中一个显示有人，该区域就显示有人。</p>
         {occupancyCandidates.length === 0
           ? <p className="settings-message">当前没有发现在线的 binary_sensor / sensor 实体。</p>
           : (
@@ -667,11 +665,9 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
               ))}
             </ul>
           )}
-      </section>
+      </CollapsibleCard>
 
-      <section className="settings-card">
-        <div className="settings-card__heading"><span className="tile__chip"><Sparkles size={20} /></span><div><h3>情景模式按钮</h3></div></div>
-
+      <CollapsibleCard icon={Sparkles} title="情景模式按钮">
         <div className="scene-edit-list">
           <ScopeGroup label="我的家庭" scenes={custom.scenes.filter((scene) => scene.scope === 'home')} entityNameById={entityNameById} onMove={moveScene} onEdit={setEditingSceneId} onDelete={deleteScene} />
           {custom.rooms.map((room) => (
@@ -717,11 +713,9 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
           </div>
           <button type="button" className="small-button small-button--selected" onClick={addScene}><Plus size={15} />添加按钮</button>
         </div>
-      </section>
+      </CollapsibleCard>
 
-      <section className="settings-card">
-        <div className="settings-card__heading"><span className="tile__chip"><Cctv size={20} /></span><div><h3>摄像头（RTSP / ONVIF）</h3></div></div>
-
+      <CollapsibleCard icon={Cctv} title="摄像头（RTSP / ONVIF）">
         <div className="scene-edit-list">
           {[
             { scope: 'home', label: '我的家庭' },
@@ -806,7 +800,7 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
           </div>
         </div>
         {cameraError && <p className="settings-message settings-message--error" role="alert">{cameraError}</p>}
-      </section>
+      </CollapsibleCard>
 
       {pickerRoom && (
         <DevicePicker

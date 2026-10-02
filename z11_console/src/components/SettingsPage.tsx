@@ -8,6 +8,7 @@ import type { CustomConfig } from '../consoleClient';
 import type { ServerStatus } from '../consoleClient';
 import { ACCENTS } from '../theme';
 import { AutomationList } from './AutomationList';
+import { CollapsibleCard } from './CollapsibleCard';
 import { connectionText } from './ConnectionBadge';
 import { CustomizeSettings } from './CustomizeSettings';
 import { EntityFilter } from './EntityFilter';
@@ -582,10 +583,9 @@ export function SettingsPage({ status, user, firstRun, onLogout, onOpenSetup, on
             <FormMessage message={seasonMessage} />
           </section>
 
-          <section className="settings-card">
-            <div className="settings-card__heading"><span className="tile__chip"><Workflow size={20} /></span><div><h3>自动化</h3><p>同步 Home Assistant 中的自动化，可逐个开启或关闭；这里只切换开关，不修改自动化内容。每次切换都会写入操作记录。</p></div></div>
+          <CollapsibleCard icon={Workflow} title="自动化" description={<p className="settings-message">同步 Home Assistant 中的自动化，可逐个开启或关闭；这里只切换开关，不修改自动化内容。每次切换都会写入操作记录。</p>}>
             <AutomationList canControl={settings.controlEnabled} onExpired={onExpired} />
-          </section>
+          </CollapsibleCard>
         </>}
 
         {tab === 'display' && <>
