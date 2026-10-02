@@ -33,13 +33,18 @@ MOTION_TOPIC_KEYWORDS = ("motion", "motionalarm", "cellmotion", "motionregion", 
 CAPTURE_COOLDOWN = 30.0     # 同一摄像头两次抓拍最小间隔（秒），避免事件风暴刷屏
 SECOND_CAPTURE_DELAY = 2.0  # 触发后第二张截图的延迟（秒）
 # 帧差兜底参数（仅当摄像头不支持 ONVIF 事件时启用）
-FRAME_WIDTH, FRAME_HEIGHT = 64, 36
+# 这一路要持续解码 RTSP，是 CPU 大头：尽量压低分辨率与帧率，够用即可。
+FRAME_WIDTH, FRAME_HEIGHT = 48, 27
 FRAME_SIZE = FRAME_WIDTH * FRAME_HEIGHT
-FRAME_FPS = 2
+FRAME_FPS = 1
 PIXEL_THRESHOLD = 24
 MOTION_RATIO = 0.06
 MOTION_FRAMES = 2
-WARMUP_FRAMES = 10
+WARMUP_FRAMES = 6
+# ONVIF 连不上（端口错 / 摄像头不在线）时，别拿 ffmpeg 死磕：
+# 帧差兜底连续跑这么久就让它歇一歇，顺便重试 ONVIF；ONVIF 一旦恢复即切回零解码的事件驱动。
+FALLBACK_RUN_SECONDS = 5 * 60.0
+FALLBACK_REST_SECONDS = 60.0
 SHOTS_TTL_SECONDS = 3 * 24 * 3600
 MAX_SHOTS_PER_CAMERA = 300
 MAX_MONITORS = 8
@@ -235,8 +240,20 @@ class MotionScreenshotter:
         warmup = WARMUP_FRAMES
         motion_streak = 0
         last_capture = 0.0
+        started = time.monotonic()
         try:
             while not stop_event.is_set():
+                # 帧差兜底本质是烧 CPU 解码，给它设硬上限：跑满 FALLBACK_RUN_SECONDS 就
+                # 主动歇 FALLBACK_REST_SECONDS 并回到 _monitor 重试 ONVIF。
+                # 这样 ONVIF 一旦恢复就回到零解码事件驱动，摄像头也能喘口气。
+                if time.monotonic() - started >= FALLBACK_RUN_SECONDS:
+                    log.info("摄像头 %s 帧差兜底已连续运行 %d 分钟，暂停 %d 秒以节省 CPU 并重试 ONVIF",
+                             name, int(FALLBACK_RUN_SECONDS / 60), int(FALLBACK_REST_SECONDS))
+                    try:
+                        await asyncio.wait_for(stop_event.wait(), FALLBACK_REST_SECONDS)
+                    except asyncio.TimeoutError:
+                        pass
+                    return
                 try:
                     frame = await asyncio.wait_for(proc.stdout.readexactly(FRAME_SIZE), timeout=20.0)
                 except asyncio.IncompleteReadError as error:
@@ -247,8 +264,10 @@ class MotionScreenshotter:
                     warmup -= 1
                     previous = frame
                     continue
-                changed = sum(1 for index in range(0, FRAME_SIZE, 2)
-                              if abs(frame[index] - (previous[index] if previous else frame[index])) > PIXEL_THRESHOLD)
+                changed = 0
+                for index in range(0, FRAME_SIZE, 2):
+                    if abs(frame[index] - previous[index]) > PIXEL_THRESHOLD:
+                        changed += 1
                 ratio = changed / (FRAME_SIZE / 2)
                 previous = frame
                 motion_streak = motion_streak + 1 if ratio >= MOTION_RATIO else 0
