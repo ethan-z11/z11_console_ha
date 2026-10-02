@@ -120,14 +120,18 @@ class OnvifClient:
             body=body,
         )
 
-    async def _call(self, url: str, soap_action: str, body: str) -> ET.Element:
+    async def _call(self, url: str, soap_action: str, body: str, timeout: float | None = None) -> ET.Element:
         payload = self._envelope(body, soap_action, url)
         headers = {
             "Content-Type": "application/soap+xml; charset=utf-8",
             "SOAPAction": f'"{soap_action}"',
         }
+        # PullMessages 是长轮询（默认挂 30 秒），必须用比它更长的单次超时覆盖会话默认的 8 秒，
+        # 否则长轮询每次都被本地掐断，反复重建订阅会把海康等固件搅成 HTTP 400/500。
+        call_timeout = aiohttp.ClientTimeout(total=timeout) if timeout else None
         try:
-            async with self._session.post(url, data=payload.encode("utf-8"), headers=headers) as response:
+            async with self._session.post(url, data=payload.encode("utf-8"), headers=headers,
+                                          timeout=call_timeout) as response:
                 text = await response.text()
         except (aiohttp.ClientError, asyncio.TimeoutError) as error:
             raise OnvifError(f"无法连接摄像头（{self.host}:{self.port}）：{error.__class__.__name__}") from error
@@ -242,7 +246,8 @@ class OnvifClient:
             "<tev:MessageLimit>32</tev:MessageLimit>"
             "</tev:PullMessages>"
         )
-        root = await self._call(pullpoint_url, "http://www.onvif.org/ver10/events/wsdl/PullMessages", body)
+        root = await self._call(pullpoint_url, "http://www.onvif.org/ver10/events/wsdl/PullMessages", body,
+                                timeout=timeout_seconds + 8.0)
         messages: list[dict] = []
         for msg in root.iter():
             if _local_name(msg.tag) != "NotificationMessage":

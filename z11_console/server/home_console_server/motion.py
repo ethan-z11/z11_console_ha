@@ -193,7 +193,7 @@ class MotionScreenshotter:
             while not stop_event.is_set():
                 try:
                     messages = await asyncio.wait_for(
-                        self._onvif.pull_messages(camera, pullpoint_url, timeout_seconds=30), timeout=35.0)
+                        self._onvif.pull_messages(camera, pullpoint_url, timeout_seconds=30), timeout=42.0)
                 except asyncio.TimeoutError:
                     continue
                 except OnvifError as error:
