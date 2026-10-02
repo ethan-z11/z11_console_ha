@@ -314,6 +314,9 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
   const [cameraPassword, setCameraPassword] = useState('');
   const [cameraScope, setCameraScope] = useState('home');
   const [cameraError, setCameraError] = useState<string | null>(null);
+  // 非 null 表示表单正用于编辑这台摄像头（复用添加表单，按类型显示不同字段）。
+  const [editingCameraId, setEditingCameraId] = useState<string | null>(null);
+  const cameraFormRef = useRef<HTMLDivElement | null>(null);
   const [sceneTarget, setSceneTarget] = useState('');
   const [manualTarget, setManualTarget] = useState('');
   const [sceneIcon, setSceneIcon] = useState('');
@@ -452,17 +455,53 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
     void mutate({ ...custom, scenes }, '情景按钮已更新');
   }
 
-  function addCamera() {
+  function resetCameraForm() {
+    setEditingCameraId(null);
+    setCameraName('');
+    setCameraKind('rtsp');
+    setCameraUrl('');
+    setCameraHost('');
+    setCameraPort('8000');
+    setCameraUser('');
+    setCameraPassword('');
+    setCameraScope('home');
+    setCameraError(null);
+  }
+
+  function startEditCamera(camera: CustomConfig['cameras'][number]) {
+    const kind = cameraType(camera);
+    setEditingCameraId(camera.id);
+    setCameraName(camera.name);
+    setCameraKind(kind);
+    setCameraScope(camera.scope ?? 'home');
+    setCameraError(null);
+    if (kind === 'rtsp') {
+      setCameraUrl(camera.rtspUrl ?? '');
+      setCameraHost('');
+      setCameraPort('8000');
+      setCameraUser('');
+      setCameraPassword('');
+    } else {
+      setCameraUrl('');
+      setCameraHost(camera.host ?? '');
+      setCameraPort(String(camera.port ?? 8000));
+      setCameraUser(camera.username ?? '');
+      setCameraPassword(camera.password ?? '');
+    }
+    cameraFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function submitCamera() {
     if (!custom) return;
     const name = cameraName.trim();
     if (!name) { setCameraError('请填写摄像头名称'); return; }
     if (name.length > 12) { setCameraError('摄像头名称最多 12 个字'); return; }
     if (cameraScope !== 'home' && !custom.rooms.some((room) => room.id === cameraScope)) { setCameraError('请选择放置位置'); return; }
+    let entry: CustomConfig['cameras'][number];
     if (cameraKind === 'rtsp') {
       const url = cameraUrl.trim();
       if (!/^rtsp:\/\//i.test(url) || url.length > 300 || /\s/.test(url)) { setCameraError('请填写以 rtsp:// 开头的完整地址（不含空格），可含账号密码'); return; }
-      setCameraUrl('');
-      void mutate({ ...custom, cameras: [...custom.cameras, { id: newId('c'), name, type: 'rtsp', rtspUrl: url, scope: cameraScope }] }, `已添加摄像头“${name}”`);
+      entry = { id: editingCameraId ?? newId('c'), name, type: 'rtsp', rtspUrl: url, scope: cameraScope };
     } else {
       const host = cameraHost.trim();
       const port = cameraPort.trim() === '' ? 8000 : Number(cameraPort);
@@ -472,15 +511,18 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
       if (!Number.isInteger(port) || port < 1 || port > 65535) { setCameraError('端口需为 1–65535 的数字（ONVIF 常见为 8000）'); return; }
       if (!username || username.length > 64) { setCameraError('请填写 ONVIF 登录用户名'); return; }
       if (password.length > 128) { setCameraError('登录密码最多 128 个字'); return; }
-      setCameraHost(''); setCameraPort('8000'); setCameraUser(''); setCameraPassword('');
-      void mutate({ ...custom, cameras: [...custom.cameras, { id: newId('c'), name, type: 'onvif', host, port, username, password, scope: cameraScope }] }, `已添加摄像头“${name}”`);
+      entry = { id: editingCameraId ?? newId('c'), name, type: 'onvif', host, port, username, password, scope: cameraScope };
     }
-    setCameraName('');
-    setCameraError(null);
+    const cameras = editingCameraId
+      ? custom.cameras.map((camera) => (camera.id === editingCameraId ? entry : camera))
+      : [...custom.cameras, entry];
+    void mutate({ ...custom, cameras }, editingCameraId ? `摄像头“${name}”的参数已更新` : `已添加摄像头“${name}”`);
+    resetCameraForm();
   }
 
   function deleteCamera(cameraId: string) {
     if (!custom) return;
+    if (editingCameraId === cameraId) resetCameraForm();
     void mutate({ ...custom, cameras: custom.cameras.filter((camera) => camera.id !== cameraId) }, '摄像头已删除');
   }
 
@@ -692,10 +734,13 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
                 <h4>{group.label}</h4>
                 <ul className="camera-manage-list">
                   {cameras.map((camera) => (
-                    <li key={camera.id}>
+                    <li key={camera.id} className={editingCameraId === camera.id ? 'camera-manage-list__row camera-manage-list__row--editing' : 'camera-manage-list__row'}>
                       <span className="camera-manage-list__name"><Cctv size={15} /><strong>{camera.name}</strong><em className={`camera-type-tag camera-type-tag--${cameraType(camera)}`}>{cameraType(camera) === 'onvif' ? 'ONVIF' : 'RTSP'}</em></span>
                       <code>{describeCamera(camera)}</code>
-                      <button type="button" className="icon-button" onClick={() => deleteCamera(camera.id)} aria-label={`删除摄像头 ${camera.name}`}><Trash2 size={16} /></button>
+                      <span className="camera-manage-list__actions">
+                        <button type="button" className="icon-button" onClick={() => startEditCamera(camera)} aria-label={`编辑摄像头 ${camera.name}`}><Pencil size={16} /></button>
+                        <button type="button" className="icon-button" onClick={() => deleteCamera(camera.id)} aria-label={`删除摄像头 ${camera.name}`}><Trash2 size={16} /></button>
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -705,12 +750,18 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
           {custom.cameras.length === 0 && <p className="settings-message">还没有摄像头，在下方添加。</p>}
         </div>
 
-        <div className="scene-add">
+        <div className="scene-add" ref={cameraFormRef}>
+          {editingCameraId && (
+            <p className="camera-edit-banner">
+              <Pencil size={14} />正在编辑摄像头参数，保存后立即生效
+              <button type="button" className="text-button" onClick={resetCameraForm}>取消编辑</button>
+            </p>
+          )}
           <div className="settings-field">
             <span>接入方式</span>
             <div className="label-chips" role="group" aria-label="摄像头接入方式">
-              <button type="button" className={cameraKind === 'rtsp' ? 'label-chip label-chip--active' : 'label-chip'} aria-pressed={cameraKind === 'rtsp'} onClick={() => { setCameraKind('rtsp'); setCameraError(null); }}>RTSP</button>
-              <button type="button" className={cameraKind === 'onvif' ? 'label-chip label-chip--active' : 'label-chip'} aria-pressed={cameraKind === 'onvif'} onClick={() => { setCameraKind('onvif'); setCameraError(null); }}>ONVIF（支持云台）</button>
+              <button type="button" disabled={editingCameraId !== null} className={cameraKind === 'rtsp' ? 'label-chip label-chip--active' : 'label-chip'} aria-pressed={cameraKind === 'rtsp'} onClick={() => { setCameraKind('rtsp'); setCameraError(null); }}>RTSP</button>
+              <button type="button" disabled={editingCameraId !== null} className={cameraKind === 'onvif' ? 'label-chip label-chip--active' : 'label-chip'} aria-pressed={cameraKind === 'onvif'} onClick={() => { setCameraKind('onvif'); setCameraError(null); }}>ONVIF（支持云台）</button>
             </div>
           </div>
           <label className="settings-field">
@@ -749,7 +800,10 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
               </label>
             </>
           )}
-          <button type="button" className="small-button small-button--selected" onClick={addCamera}><Plus size={15} />添加摄像头</button>
+          <div className="form-actions">
+            <button type="button" className="small-button small-button--selected" onClick={submitCamera}>{editingCameraId ? <Pencil size={15} /> : <Plus size={15} />}{editingCameraId ? '保存修改' : '添加摄像头'}</button>
+            {editingCameraId && <button type="button" className="small-button" onClick={resetCameraForm}>取消</button>}
+          </div>
         </div>
         {cameraError && <p className="settings-message settings-message--error" role="alert">{cameraError}</p>}
       </section>

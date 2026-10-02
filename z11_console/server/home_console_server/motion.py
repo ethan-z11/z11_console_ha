@@ -16,6 +16,7 @@ Motion 事件，我们收到后抓拍一张“触发瞬间”的截图，并在 
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import re
@@ -72,6 +73,8 @@ class MotionScreenshotter:
         self._occupied = occupied
         self._tasks: dict[str, asyncio.Task[None]] = {}
         self._stop_events: dict[str, asyncio.Event] = {}
+        # 每台摄像头当前监测任务使用的配置指纹；参数被编辑后指纹变化即重启任务。
+        self._fingerprints: dict[str, str] = {}
         # 抓拍是“发射后不管”的任务，必须持有强引用，否则可能被 GC 提前回收。
         self._capture_tasks: set[asyncio.Task[None]] = set()
         self._monitor_semaphore = asyncio.Semaphore(MAX_MONITORS)
@@ -81,15 +84,27 @@ class MotionScreenshotter:
     # ---------- 生命周期 ----------
 
     def sync(self, cameras: list[dict]) -> None:
-        """配置变更后调用：为新增的 ONVIF 摄像头启动监测，停止已删除 / 改类型的。"""
-        wanted = {camera["id"] for camera in cameras if camera.get("type") == "onvif"}
-        for camera_id in list(self._tasks):
-            if camera_id not in wanted:
-                self._stop(camera_id)
+        """配置变更后调用：为新增的 ONVIF 摄像头启动监测，停止已删除 / 改类型的。
+
+        已存在的摄像头若连接参数（host/port/账号密码/scope）被编辑，按指纹比对重启其任务，
+        否则旧任务会一直使用启动时传入的配置，编辑不生效。
+        """
         by_id = {camera["id"]: camera for camera in cameras}
+        wanted = {camera_id for camera_id, camera in by_id.items() if camera.get("type") == "onvif"}
+        for camera_id in list(self._tasks):
+            if camera_id not in wanted or self._fingerprints.get(camera_id) != self._fingerprint(by_id[camera_id]):
+                self._stop(camera_id)
+                self._fingerprints.pop(camera_id, None)
         for camera_id in wanted:
             if camera_id not in self._tasks:
+                self._fingerprints[camera_id] = self._fingerprint(by_id[camera_id])
                 self._start(camera_id, by_id[camera_id])
+
+    @staticmethod
+    def _fingerprint(camera: dict) -> str:
+        return json.dumps(
+            {key: camera.get(key) for key in ("type", "host", "port", "username", "password", "scope")},
+            sort_keys=True, ensure_ascii=False, default=str)
 
     async def start(self, cameras: list[dict]) -> None:
         self._shots_dir.mkdir(parents=True, exist_ok=True)
@@ -109,6 +124,7 @@ class MotionScreenshotter:
             await asyncio.wait(self._capture_tasks, timeout=10)
         self._tasks.clear()
         self._stop_events.clear()
+        self._fingerprints.clear()
 
     def _start(self, camera_id: str, camera: dict) -> None:
         event = asyncio.Event()
