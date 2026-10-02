@@ -38,7 +38,8 @@ from .ha import HaUpstream
 from .motion import PTZ_DIRECTIONS, MotionScreenshotter
 from .onvif import OnvifError, OnvifManager
 from .season import HELPER_ENTITY as SEASON_HELPER, SEASONS, SeasonRules
-from .store import ACCENTS, BRAND_TITLE_MAX, DEFAULT_BRAND_TITLE, DEFAULT_HOME_TITLE, HOME_TITLE_MAX, THEMES, TILE_SCALE_MAX, TILE_SCALE_MIN, USERNAME_MAX, USERNAME_RE, PASSWORD_MIN, PASSWORD_MAX, ACCOUNTS_MAX, Account, Store, clean_custom, hash_pin, id_list, is_tile_scale, verify_pin, OCCUPIED_STATES
+from .store import ACCENTS, BRAND_TITLE_MAX, DEFAULT_BRAND_TITLE, DEFAULT_HOME_TITLE, HOME_TITLE_MAX, THEMES, TILE_SCALE_MAX, TILE_SCALE_MIN, USERNAME_MAX, USERNAME_RE, PASSWORD_MIN, PASSWORD_MAX, ACCOUNTS_MAX, Account, Store, clean_custom, hash_pin, id_list, is_tile_scale, verify_pin, OCCUPIED_STATES, weather_place
+from .almanac import Almanac
 from .weather import Weather, WeatherError, valid_location
 
 log = logging.getLogger("home_console_server")
@@ -182,6 +183,7 @@ class ConsoleServer:
         self._tasks: set[asyncio.Task[None]] = set()
         self.upstream = HaUpstream(self._on_status, self._on_states, self._on_registry)
         self.weather = Weather()
+        self.almanac = Almanac()
         # 自动发现：registries 为 HA 的区域 / 设备 / 实体 / 标签注册表；discovered 为过滤前的完整目录。
         self.registries: tuple[list[Any], list[Any], list[Any], list[Any]] | None = None
         self.discovered: dict[str, Any] = EMPTY_CATALOGUE
@@ -303,6 +305,7 @@ class ConsoleServer:
                 "allOffKinds": settings.all_off_kinds, "allOffScopes": settings.all_off_scopes,
                 "allOffEntities": settings.all_off_entities,
                 "allOffExcludes": settings.all_off_excludes,
+                "weatherPlace": settings.weather_place,
                 "people": self._people_status(),
                 "occupancy": self._occupancy_status(),
                 "go2rtc": {"enabled": bool(settings.go2rtc_url), "modes": PLAYER_MODES},
@@ -1201,6 +1204,29 @@ class ConsoleServer:
         except WeatherError as error:
             return web.json_response({"error": str(error)}, status=error.status)
 
+    async def weather_save_place(self, request: web.Request) -> web.Response:
+        """把天气地区保存为全屋共用（无需管理员：与天气查询一样对所有屏幕开放）。"""
+        try:
+            body = await request.json()
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return web.json_response({"error": "请求不是合法 JSON"}, status=400)
+        place = weather_place(body.get("place"))
+        if not place:
+            return web.json_response({"error": "地区信息不完整"}, status=400)
+        settings = self.store.settings
+        settings.weather_place = place
+        self.store.save()
+        await self.broadcast(self.status_message())
+        return web.json_response({"ok": True, "place": place})
+
+    async def almanac_data(self, request: web.Request) -> web.Response:
+        """内置中国老黄历（农历/干支/宜忌/月相），按中国时区实时计算。"""
+        try:
+            return web.json_response(self.almanac.payload())
+        except Exception as error:  # 历法计算不应导致 500，记录后返回 502
+            log.exception("almanac payload failed: %s", error)
+            return web.json_response({"error": "农历计算失败"}, status=502)
+
 
 def client_ip(request: web.Request) -> str:
     """只信任本机反向代理（如 Vite 开发代理）带来的 X-Forwarded-For。"""
@@ -1266,6 +1292,8 @@ def create_app(data_dir: Path, static_dir: Path | None) -> web.Application:
         web.get("/api/weather", console.weather_forecast),
         web.get("/api/weather/search", console.weather_search),
         web.get("/api/weather/place", console.weather_place),
+        web.post("/api/weather/place", console.weather_save_place),
+        web.get("/api/almanac", console.almanac_data),
     ])
 
     if static_dir and (static_dir / "index.html").exists():

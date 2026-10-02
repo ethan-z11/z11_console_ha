@@ -300,6 +300,28 @@ def id_list(value: Any) -> list[str] | None:
     return list(dict.fromkeys(value))
 
 
+def weather_place(value: Any) -> dict[str, Any] | None:
+    """校验天气地区：id/name 必填（中国天气网城市 ID），其余字段为展示用字符串/坐标。"""
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        return None
+    place_id = value.get("id")
+    name = value.get("name")
+    if not isinstance(place_id, str) or not 6 <= len(place_id) <= 12 or not place_id.isdigit():
+        return None
+    if not isinstance(name, str) or not 0 < len(name) <= 40:
+        return None
+    result: dict[str, Any] = {"id": place_id, "name": name}
+    for key in ("adm2", "adm1", "country"):
+        text = value.get(key, "")
+        result[key] = text[:40] if isinstance(text, str) else ""
+    for key in ("lat", "lon"):
+        coord = value.get(key, 0.0)
+        result[key] = coord if isinstance(coord, (int, float)) and not isinstance(coord, bool) else 0.0
+    return result
+
+
 def clean_layout(raw: Any) -> dict[str, Any]:
     """只保留合法字段：sizes 设备 → 1x1/2x1，order 房间 → 设备顺序，favorites 常用设备（null 表示用默认清单），rooms 导航房间顺序（空表示默认顺序）。"""
     raw = raw if isinstance(raw, dict) else {}
@@ -344,6 +366,8 @@ class Settings:
     all_off_entities: list[str] = field(default_factory=list)
     # “一键关闭”排除的实体 ID（即使符合类别/区域也不关闭）。
     all_off_excludes: list[str] = field(default_factory=list)
+    # 天气地区（全屋所有屏幕共用；在天气弹窗里选定后保存到服务端）。None=尚未选择。
+    weather_place: dict[str, Any] | None = None
     # 人员在家配置：每人 id/name/entityId/image(自定义图片名,null=默认)/homeStates(判定在家的状态值列表)
     people: list[dict[str, Any]] = field(default_factory=list)
 
@@ -369,6 +393,7 @@ class Settings:
             "allOffScopes": self.all_off_scopes,
             "allOffEntities": self.all_off_entities,
             "allOffExcludes": self.all_off_excludes,
+            "weatherPlace": self.weather_place,
             "people": self.people,
         }
 
@@ -464,6 +489,7 @@ class Store:
             all_off_scopes=id_list(raw.get("allOffScopes")) or [],
             all_off_entities=id_list(raw.get("allOffEntities")) or [],
             all_off_excludes=id_list(raw.get("allOffExcludes")) or [],
+            weather_place=weather_place(raw.get("weatherPlace")),
             people=raw.get("people") if isinstance(raw.get("people"), list) else [],
         )
 
@@ -489,6 +515,7 @@ class Store:
             "allOffScopes": settings.all_off_scopes,
             "allOffEntities": settings.all_off_entities,
             "allOffExcludes": settings.all_off_excludes,
+            "weatherPlace": settings.weather_place,
             "people": settings.people,
         }
         _write_private(self.settings_path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")

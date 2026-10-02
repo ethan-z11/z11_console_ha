@@ -2,16 +2,9 @@
 import { CloudDrizzle, CloudFog, CloudHail, CloudLightning, CloudMoon, CloudMoonRain, CloudRain, CloudRainWind, CloudSnow, CloudSun, CloudSunRain, Cloud, Haze, Moon, Sun, ThermometerSnowflake, ThermometerSun, Wind } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { request } from './consoleApi';
+import type { WeatherPlace } from './consoleClient';
 
-export interface WeatherPlace {
-  id: string;
-  name: string;
-  adm2: string;
-  adm1: string;
-  country: string;
-  lat: number;
-  lon: number;
-}
+export type { WeatherPlace };
 
 export interface WeatherNow {
   obsTime: string;
@@ -58,6 +51,9 @@ export const placeAt = (lon: number, lat: number) =>
   request<{ place: WeatherPlace }>(`/api/weather/place?lon=${lon}&lat=${lat}`).then((data) => data.place);
 export const homePlace = () => request<{ place: WeatherPlace }>('/api/weather/place?home=1').then((data) => data.place);
 export const getForecast = (place: WeatherPlace) => request<Forecast>(`/api/weather?location=${encodeURIComponent(place.id)}`);
+/** 把天气地区保存到服务端，全屋所有屏幕共用（WS status 会即时广播）。 */
+export const saveSharedPlace = (place: WeatherPlace) =>
+  request<{ ok: boolean; place: WeatherPlace }>('/api/weather/place', 'POST', { place }).then((data) => data.place);
 
 /** 地名的补充说明：省、市，重复或与地名相同的省略。 */
 export function placeDetail(place: WeatherPlace): string {

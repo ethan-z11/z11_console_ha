@@ -30,6 +30,8 @@ import { useConsole } from './useConsole';
 import { readOnlyActions, useHome } from './useHome';
 import { useTileDrag } from './useTileDrag';
 import { useWeather } from './useWeather';
+import { useAlmanac } from './useAlmanac';
+import { AlmanacDialog } from './components/AlmanacDialog';
 import { weatherIcon } from './weather';
 import { applyAccent, applyTheme, resolveTheme } from './theme';
 import { usePageSwipe } from './usePageSwipe';
@@ -107,8 +109,10 @@ function Console({ authenticated, onLogout, onOpenSetup }: ConsoleProps) {
   const syncedLayoutRef = useRef<string | null>(null);
   const drag = useTileDrag(reorder);
   const now = useNow();
-  const weather = useWeather();
+  const weather = useWeather(server.status?.weatherPlace ?? null);
+  const { almanac } = useAlmanac();
   const [weatherOpen, setWeatherOpen] = useState(false);
+  const [almanacOpen, setAlmanacOpen] = useState(false);
   const [activeList, setActiveList] = useState<ActiveListRequest | null>(null);
   // “正在运行”的全部关闭需要二次确认：第一次点击进入确认状态，3 秒内再点才执行。
   const [confirmAllOff, setConfirmAllOff] = useState(false);
@@ -245,11 +249,8 @@ function Console({ authenticated, onLogout, onOpenSetup }: ConsoleProps) {
   const musicUrl = (server.status?.musicUrl ?? '').trim();
   const tileScale = (server.status?.tileScale ?? 100) / 100;
   const brandTitle = server.status?.brandTitle ?? '家庭控制';
-  // 农历副标题：HA 农历实体的 state；未发现或不可用时不显示。
-  const lunarEntityId = server.catalogue?.entities.find((entity) => entity.deviceClass === 'lunar')?.id;
-  const lunarState = lunarEntityId ? server.entityStates.get(lunarEntityId) : undefined;
-  const homeSubline = lunarState && lunarState.state !== 'unavailable' && lunarState.state !== 'unknown' && lunarState.state.trim() !== ''
-    ? lunarState.state : '';
+  // 农历副标题：后端内置历法计算（中国时区），点击打开黄历详情；未加载好时不显示。
+  const homeSubline = almanac?.text ?? '';
   // 同步网页标题为家庭名称
   useEffect(() => { document.title = brandTitle; }, [brandTitle]);
   // 我的家庭页大标题就是当前时间：19:49 9月28日 周一（侧栏导航仍用首页名称）。
@@ -411,7 +412,7 @@ function Console({ authenticated, onLogout, onOpenSetup }: ConsoleProps) {
     ...[...home.rooms.filter((room) => room.category === 'main'), ...home.rooms.filter((room) => room.category === 'other')].map((room) => ({ key: room.id, label: room.name })),
   ];
   const currentNavIndex = page === 'home' ? 0 : page === 'room' ? navTargets.findIndex((target) => target.key === selectedRoom.id) : -1;
-  const swipeEnabled = currentNavIndex >= 0 && !editingLayout && !weatherOpen && !activeList && !selectedClimate && !roomOrderOpen;
+  const swipeEnabled = currentNavIndex >= 0 && !editingLayout && !weatherOpen && !almanacOpen && !activeList && !selectedClimate && !roomOrderOpen;
   const swipeHint = usePageSwipe(
     swipeEnabled,
     currentNavIndex > 0 ? navTargets[currentNavIndex - 1] : null,
@@ -454,7 +455,11 @@ function Console({ authenticated, onLogout, onOpenSetup }: ConsoleProps) {
             <div className="hero__title">
               <div>
                 <h1>{page === 'room' ? selectedRoom.name : page === 'settings' ? '设置' : page === 'music' ? '音乐' : homeClock}{page === 'home' && season && <span className={`season-badge season-badge--${season}`} title="季节规则（设置 → 自动化）">{season === 'summer' ? <Sun size={14} /> : <Snowflake size={14} />}{season === 'summer' ? '夏季' : '冬季'}</span>}{occupancyKnown && occupancyScope && <OccupancyBadge occupied={occupancy?.[occupancyScope] === true} />}</h1>
-                {((page !== 'home') || homeSubline) && <p>{page === 'room' ? '房间状态与设备控制' : page === 'settings' ? '管理密码、Home Assistant 连接与控制权限' : page === 'music' ? '内嵌音乐界面' : homeSubline}</p>}
+                {page === 'home'
+                  ? (homeSubline
+                    ? <p><button type="button" className="hero__subline-button" onClick={() => setAlmanacOpen(true)} title="点击查看农历详情">{homeSubline}</button></p>
+                    : null)
+                  : <p>{page === 'room' ? '房间状态与设备控制' : page === 'settings' ? '管理密码、Home Assistant 连接与控制权限' : '内嵌音乐界面'}</p>}
               </div>
               {page === 'home' && <WeatherCompact weather={weather} onOpen={() => setWeatherOpen(true)} />}
             </div>
@@ -520,6 +525,7 @@ function Console({ authenticated, onLogout, onOpenSetup }: ConsoleProps) {
       {toast && <div className="toast" role="alert" onClick={() => { clearNotice(); setAppNotice(null); }}>{toast}</div>}
       <ActiveDevicesDialog request={activeList} home={home} actions={actions} canControl={canControl} onClose={() => setActiveList(null)} />
       <WeatherDialog open={weatherOpen} weather={weather} now={now} onClose={() => setWeatherOpen(false)} />
+      <AlmanacDialog open={almanacOpen} almanac={almanac} onClose={() => setAlmanacOpen(false)} />
       <ClimateDialog climate={selectedClimate} room={selectedClimate && roomOf(selectedClimate)} actions={actions} onClose={() => setSelectedClimateId(null)} />
     </div>
   );

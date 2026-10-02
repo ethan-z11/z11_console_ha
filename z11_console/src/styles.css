@@ -1342,3 +1342,101 @@ html, body { overscroll-behavior-y: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* ---------- 首页农历副标题（可点） ---------- */
+.hero__subline-button {
+  padding: 0; border: 0; background: none; color: inherit; font: inherit; line-height: inherit;
+  cursor: pointer; transition: color .18s;
+}
+.hero__subline-button:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 4px; }
+
+/* ---------- 农历老黄历弹窗 ---------- */
+.device-dialog.almanac-dialog {
+  width: min(940px, calc(100vw - 24px));
+  max-height: min(86vh, 920px);
+  overflow-y: auto;
+}
+.almanac-hero {
+  margin-bottom: 16px; padding: 18px 20px;
+  border: 1px solid var(--hairline-strong); border-radius: var(--radius);
+  background: linear-gradient(150deg, var(--surface-on), var(--surface));
+}
+.almanac-hero p { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.almanac-hero__lunar { color: var(--text); font-size: 21px; font-weight: 650; letter-spacing: .02em; }
+.almanac-hero__solar { margin-top: 8px !important; color: var(--text-2); font-size: 13px; }
+.almanac-hero__term { margin-top: 6px !important; color: var(--text-3); font-size: 12.5px; }
+.almanac-hero__term svg { color: var(--accent); }
+
+.almanac-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.almanac-section {
+  padding: 15px 16px;
+  border: 1px solid var(--hairline-strong); border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.almanac-section h3 {
+  display: flex; align-items: center; gap: 7px; margin: 0 0 12px;
+  color: var(--accent); font-size: 13.5px; font-weight: 600;
+}
+.almanac-level { margin: 0 0 8px !important; color: var(--text); font-size: 14px; font-weight: 600; }
+
+.almanac-bazi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.almanac-bazi__pillar {
+  display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 6px;
+  border: 1px solid var(--hairline); border-radius: var(--radius-sm); background: var(--bg);
+}
+.almanac-bazi__pillar small { color: var(--text-3); font-size: 11px; }
+.almanac-bazi__pillar strong { color: var(--text); font-size: 17px; letter-spacing: .08em; }
+
+.almanac-rows { display: flex; flex-direction: column; gap: 9px; margin: 12px 0 0; }
+.almanac-row { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 10px; align-items: start; }
+.almanac-row dt { padding-top: 3px; color: var(--text-3); font-size: 12px; }
+.almanac-row dd { margin: 0; color: var(--text-2); font-size: 13px; line-height: 1.5; }
+
+.almanac-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.almanac-chip {
+  display: inline-flex; align-items: center; padding: 3px 10px;
+  border: 1px solid var(--hairline); border-radius: 999px;
+  background: var(--surface-2); color: var(--text-2); font-size: 12px;
+}
+.almanac-chip--good { color: var(--good); border-color: color-mix(in srgb, var(--good) 38%, transparent); background: color-mix(in srgb, var(--good) 12%, transparent); }
+.almanac-chip--bad { color: #ff7a72; border-color: rgba(255, 122, 114, .35); background: rgba(255, 122, 114, .1); }
+.almanac-chip--holiday { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.almanac-empty { color: var(--text-3); font-size: 12.5px; }
+
+.almanac-fly-center { margin: 0 0 10px; color: var(--text-2); font-size: 12.5px; }
+.almanac-fly { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.almanac-fly__cell {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 6px;
+  border: 1px solid var(--hairline); border-radius: var(--radius-sm); background: var(--bg);
+}
+.almanac-fly__cell small { color: var(--text-3); font-size: 10.5px; }
+.almanac-fly__cell strong { font-size: 22px; font-weight: 700; line-height: 1.1; }
+.almanac-fly__cell span { color: var(--text-2); font-size: 11.5px; }
+.almanac-fly--bai strong { color: #cfd6dd; }
+.almanac-fly--hei strong { color: #7e8790; }
+.almanac-fly--bi strong { color: #4fd2c4; }
+.almanac-fly--lv strong { color: var(--good); }
+.almanac-fly--huang strong { color: var(--warning); }
+.almanac-fly--chi strong { color: #ff7a72; }
+.almanac-fly--zi strong { color: #b39bff; }
+
+.almanac-shichen { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.almanac-shichen__cell {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px;
+  border: 1px solid var(--hairline); border-radius: var(--radius-sm); background: var(--bg);
+}
+.almanac-shichen__cell strong { color: var(--text); font-size: 13px; }
+.almanac-shichen__cell small { color: var(--text-3); font-size: 10px; }
+.almanac-shichen__cell span { font-size: 11.5px; font-weight: 600; }
+.almanac-shichen__cell--good span { color: var(--good); }
+.almanac-shichen__cell--bad span { color: #ff7a72; }
+.almanac-shichen__cell--current {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 6px 18px -8px rgba(var(--accent-rgb), .55);
+}
+
+@media (max-width: 720px) {
+  .almanac-layout { grid-template-columns: minmax(0, 1fr); }
+  .almanac-shichen { grid-template-columns: repeat(4, 1fr); }
+  .device-dialog.almanac-dialog { width: 100vw; max-width: 100vw; max-height: 92vh; }
+}

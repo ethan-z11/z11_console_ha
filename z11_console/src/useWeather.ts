@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getForecast, homePlace, placeAt, readPlace, savePlace } from './weather';
+import { getForecast, homePlace, placeAt, readPlace, savePlace, saveSharedPlace } from './weather';
 import type { Forecast, WeatherPlace } from './weather';
 
 const REFRESH_MS = 10 * 60 * 1000;
@@ -25,8 +25,12 @@ function currentPosition(): Promise<GeolocationPosition> {
   }, { enableHighAccuracy: false, timeout: 10_000, maximumAge: 10 * 60 * 1000 }));
 }
 
-/** 天气：位置每块屏幕各自记住；未选择过时用 HA 中“家”的位置。每 10 分钟及页面回到前台时刷新（服务端另有 10 分钟缓存）。 */
-export function useWeather(): WeatherState {
+/**
+ * 天气：地区全屋共用（保存在服务端，一块屏幕选好后所有屏幕直接显示）。
+ * 本地 localStorage 只作首次进入/服务端暂不可用时的兜底；未选择过时用 HA 中“家”的位置。
+ * 每 10 分钟及页面回到前台时刷新（服务端另有 10 分钟缓存）。
+ */
+export function useWeather(sharedPlace?: WeatherPlace | null): WeatherState {
   const [place, setPlace] = useState<WeatherPlace | null>(readPlace);
   const [forecast, setForecast] = useState<{ placeId: string; data: Forecast } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -39,15 +43,26 @@ export function useWeather(): WeatherState {
     savePlace(next);
     setPlace(next);
     setLocateError(null);
+    // 存为全屋共用；网络失败时不影响本机显示，下次选择会再试。
+    void saveSharedPlace(next).catch(() => undefined);
   }, []);
 
-  // 没有选过位置：尝试 HA 的“家”，失败（演示模式或未设置）则等待用户搜索或定位。
+  // 服务端下发的共用地区优先级最高（任何一块屏幕改了地区，所有屏幕立即跟随）。
   useEffect(() => {
-    if (readPlace()) return;
+    if (!sharedPlace) return;
+    savePlace(sharedPlace);
+    setPlace((previous) => (previous?.id === sharedPlace.id ? previous : sharedPlace));
+  }, [sharedPlace]);
+
+  // 本地和服务端都没选过位置：尝试 HA 的“家”，拿到后直接存成全屋共用；失败则等待用户选择。
+  useEffect(() => {
+    if (sharedPlace || readPlace()) return;
     let cancelled = false;
-    homePlace().then((home) => { if (!cancelled && !readPlace()) setPlace(home); }).catch(() => undefined);
+    homePlace()
+      .then((home) => { if (!cancelled && !readPlace()) choosePlace(home); })
+      .catch(() => undefined);
     return () => { cancelled = true; };
-  }, []);
+  }, [sharedPlace, choosePlace]);
 
   useEffect(() => {
     if (!place) return;
