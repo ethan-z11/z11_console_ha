@@ -95,6 +95,7 @@ export function SettingsPage({ status, user, firstRun, onLogout, onOpenSetup, on
   const [haUrl, setHaUrl] = useState('');
   const [haToken, setHaToken] = useState('');
   const [controlMessage, setControlMessage] = useState<Message>(null);
+  const [motionMessage, setMotionMessage] = useState<Message>(null);
   const [connectionMessage, setConnectionMessage] = useState<Message>(null);
   const [musicUrl, setMusicUrl] = useState('');
   const [musicMessage, setMusicMessage] = useState<Message>(null);
@@ -438,6 +439,15 @@ export function SettingsPage({ status, user, firstRun, onLogout, onOpenSetup, on
               <button type="button" role="switch" className="settings-switch" aria-checked={settings.controlEnabled} aria-labelledby={`${formId}-control`} onClick={() => save({ controlEnabled: !settings.controlEnabled }, setControlMessage, settings.controlEnabled ? '已切换为只读模式' : '已允许控制设备')}><span /></button>
             </div>
             <FormMessage message={controlMessage} />
+          </section>
+
+          <section className="settings-card">
+            <div className="settings-card__heading"><span className="tile__chip"><Cctv size={20} /></span><div><h3>运动检测截图</h3><p>开启后持续监测摄像头画面（优先 ONVIF 事件，不支持的摄像头用帧差兜底），检测到运动时自动截图，可在摄像头弹窗中回看。截图保留 3 天后自动删除。关闭可显著降低 CPU 占用。</p></div></div>
+            <div className="settings-row">
+              <span id={`${formId}-motion`}>启用截图监测</span>
+              <button type="button" role="switch" className="settings-switch" aria-checked={settings.motionCapture} aria-labelledby={`${formId}-motion`} onClick={() => save({ motionCapture: !settings.motionCapture }, setMotionMessage, settings.motionCapture ? '已停止截图监测' : '已开启截图监测')}><span /></button>
+            </div>
+            <FormMessage message={motionMessage} />
           </section>
 
           <section className="settings-card">

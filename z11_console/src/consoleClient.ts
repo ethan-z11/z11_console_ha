@@ -128,7 +128,9 @@ export type HaStatus =
 export interface ServerStatus {
   dataSource: 'demo' | 'live';
   controlEnabled: boolean;
-  /** “我的家庭”页标题与副标题（设置 → 显示），所有屏幕共用；副标题为空表示不显示。 */
+  /** 运动检测截图总开关（设置 → 设备）；关闭后停止所有 ONVIF 事件订阅与帧差兜底。 */
+  motionCapture: boolean;
+  /** "我的家庭"页标题与副标题（设置 → 显示），所有屏幕共用；副标题为空表示不显示。 */
   homeTitle?: string;
   /** 家庭名称（默认"家庭控制"，同步网页标题）。 */
   brandTitle?: string;
@@ -332,7 +334,7 @@ export class ConsoleClient {
   private handle(message: ServerMessage) {
     switch (message.type) {
       case 'hello': this.handlers.onHello(message.catalogue, message.layout, message.custom); return;
-      case 'status': this.handlers.onStatus({ dataSource: message.dataSource, controlEnabled: message.controlEnabled, homeTitle: message.homeTitle, brandTitle: message.brandTitle, theme: message.theme, tileScale: message.tileScale, accent: message.accent, season: message.season, musicUrl: message.musicUrl, allOffKinds: message.allOffKinds, allOffScopes: message.allOffScopes, allOffEntities: message.allOffEntities, allOffExcludes: message.allOffExcludes, weatherPlace: message.weatherPlace, people: message.people, go2rtc: message.go2rtc, occupancy: message.occupancy, ha: message.ha }); return;
+      case 'status': this.handlers.onStatus({ dataSource: message.dataSource, controlEnabled: message.controlEnabled, motionCapture: message.motionCapture, homeTitle: message.homeTitle, brandTitle: message.brandTitle, theme: message.theme, tileScale: message.tileScale, accent: message.accent, season: message.season, musicUrl: message.musicUrl, allOffKinds: message.allOffKinds, allOffScopes: message.allOffScopes, allOffEntities: message.allOffEntities, allOffExcludes: message.allOffExcludes, weatherPlace: message.weatherPlace, people: message.people, go2rtc: message.go2rtc, occupancy: message.occupancy, ha: message.ha }); return;
       case 'catalogue': this.handlers.onCatalogue(message.catalogue); return;
       case 'custom': this.handlers.onCustom(message.custom); return;
       case 'entities': this.handlers.onEntities(message.changed, Boolean(message.snapshot)); return;

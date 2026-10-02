@@ -299,6 +299,7 @@ class ConsoleServer:
     def status_message(self) -> dict[str, Any]:
         settings = self.store.settings
         return {"type": "status", "dataSource": settings.data_source, "controlEnabled": settings.control_enabled,
+                "motionCapture": settings.motion_capture,
                 "homeTitle": settings.home_title, "brandTitle": settings.brand_title, "theme": settings.theme,
                 "tileScale": settings.tile_scale, "accent": settings.accent, "season": self.season.season(),
                 "musicUrl": settings.music_url,
@@ -902,6 +903,9 @@ class ConsoleServer:
         if isinstance(body.get("controlEnabled"), bool) and body["controlEnabled"] != settings.control_enabled:
             settings.control_enabled = body["controlEnabled"]
             changed.append("controlEnabled")
+        if isinstance(body.get("motionCapture"), bool) and body["motionCapture"] != settings.motion_capture:
+            settings.motion_capture = body["motionCapture"]
+            changed.append("motionCapture")
         if body.get("dataSource") in ("demo", "live") and body["dataSource"] != settings.data_source:
             if body["dataSource"] == "live" and not (settings.ha_url and settings.token_encrypted):
                 return web.json_response({"error": "请先保存 HA 地址和令牌"}, status=400)
@@ -1037,6 +1041,9 @@ class ConsoleServer:
             self.store.save()
             self.store.audit("settings_changed", client_ip(request), username=session["username"], fields=changed,
                              controlEnabled=settings.control_enabled, dataSource=settings.data_source, haUrl=settings.ha_url)
+        if "motionCapture" in changed:
+            # 总开关切换：sync([]) 会停掉所有监测/帧差进程，但保留过期截图的定时清理。
+            self.motion.sync(self.store.custom.get("cameras", []) if settings.motion_capture else [])
         if reconnect:
             await self.reconnect()
         if season_sync or reconnect:
@@ -1137,7 +1144,8 @@ class ConsoleServer:
         self.store.save_custom(custom)
         # 摄像头配置可能增删改：ONVIF 探测缓存作废，并按新列表启停运动监测。
         self.onvif.invalidate()
-        self.motion.sync(custom.get("cameras", []))
+        # 运动截图总开关关闭时，配置变更不重启监测。
+        self.motion.sync(custom.get("cameras", []) if self.store.settings.motion_capture else [])
         self.store.audit("custom_changed", client_ip(request), username=session["username"],
                          rooms=len(custom["rooms"]), assignments=len(custom["assignments"]), scenes=len(custom["scenes"]))
         await self.broadcast({"type": "custom", "custom": self.public_custom()})
@@ -1309,7 +1317,9 @@ def create_app(data_dir: Path, static_dir: Path | None) -> web.Application:
     async def on_startup(_app: web.Application) -> None:
         await console.reconnect()
         await console.onvif.start()
-        await console.motion.start(console.store.custom.get("cameras", []))
+        # 总开关关闭时不启动任何监测，但 cleanup 仍会运行（继续清理过期截图）。
+        cameras = console.store.custom.get("cameras", []) if console.store.settings.motion_capture else []
+        await console.motion.start(cameras)
 
     async def on_shutdown(_app: web.Application) -> None:
         # 先关闭页面的 WebSocket：否则 aiohttp 会等这些长连接自行结束（默认最长 60 秒），停止或重启服务时就会卡住。

@@ -6,6 +6,8 @@ export interface AdminSettings {
   haUrl: string;
   hasToken: boolean;
   controlEnabled: boolean;
+  /** 运动检测截图总开关：关闭后停止所有 ONVIF 事件订阅与帧差兜底。 */
+  motionCapture: boolean;
   dataSource: 'demo' | 'live';
   homeTitle: string;
   brandTitle: string;

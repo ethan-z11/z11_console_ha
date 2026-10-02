@@ -344,6 +344,8 @@ def is_pin(value: object) -> bool:
 class Settings:
     ha_url: str = ""
     control_enabled: bool = True
+    # 运动检测截图总开关：关闭后停止所有 ONVIF 事件订阅与帧差兜底进程（截图目录保留）。
+    motion_capture: bool = True
     data_source: str = "demo"  # demo | live
     token_encrypted: str = ""
     filter_mode: str = "blacklist"  # blacklist：显示全部发现的实体，名单内的隐藏；whitelist：只显示名单内的
@@ -380,6 +382,7 @@ class Settings:
             "haUrl": self.ha_url,
             "hasToken": bool(self.token_encrypted),
             "controlEnabled": self.control_enabled,
+            "motionCapture": self.motion_capture,
             "dataSource": self.data_source,
             "homeTitle": self.home_title,
             "brandTitle": self.brand_title,
@@ -471,6 +474,7 @@ class Store:
         return Settings(
             ha_url=str(raw.get("haUrl", "")),
             control_enabled=bool(raw.get("controlEnabled", True)),
+            motion_capture=bool(raw.get("motionCapture", True)),
             data_source="live" if raw.get("dataSource") == "live" else "demo",
             token_encrypted=str(raw.get("tokenEncrypted", "")),
             filter_mode="whitelist" if raw.get("filterMode") == "whitelist" else "blacklist",
@@ -497,6 +501,7 @@ class Store:
         payload = {
             "haUrl": settings.ha_url,
             "controlEnabled": settings.control_enabled,
+            "motionCapture": settings.motion_capture,
             "dataSource": settings.data_source,
             "tokenEncrypted": settings.token_encrypted,
             "filterMode": settings.filter_mode,
