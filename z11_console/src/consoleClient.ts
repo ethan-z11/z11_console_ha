@@ -137,6 +137,8 @@ export interface ServerStatus {
   allOffScopes?: string[];
   /** “一键关闭”额外指定的实体 ID。 */
   allOffEntities?: string[];
+  /** “一键关闭”要排除的实体 ID（即使符合类别/区域也不关）。 */
+  allOffExcludes?: string[];
   /** 人员在家状态列表（从 HA 实体判断后由后端下发）。 */
   people?: PersonStatus[];
   /** go2rtc 低延迟流媒体是否已配置（启用后摄像头走 WebRTC，自动回退 MSE/MJPEG）。 */
@@ -317,7 +319,7 @@ export class ConsoleClient {
   private handle(message: ServerMessage) {
     switch (message.type) {
       case 'hello': this.handlers.onHello(message.catalogue, message.layout, message.custom); return;
-      case 'status': this.handlers.onStatus({ dataSource: message.dataSource, controlEnabled: message.controlEnabled, homeTitle: message.homeTitle, brandTitle: message.brandTitle, theme: message.theme, tileScale: message.tileScale, accent: message.accent, season: message.season, musicUrl: message.musicUrl, allOffKinds: message.allOffKinds, allOffScopes: message.allOffScopes, allOffEntities: message.allOffEntities, people: message.people, go2rtc: message.go2rtc, occupancy: message.occupancy, ha: message.ha }); return;
+      case 'status': this.handlers.onStatus({ dataSource: message.dataSource, controlEnabled: message.controlEnabled, homeTitle: message.homeTitle, brandTitle: message.brandTitle, theme: message.theme, tileScale: message.tileScale, accent: message.accent, season: message.season, musicUrl: message.musicUrl, allOffKinds: message.allOffKinds, allOffScopes: message.allOffScopes, allOffEntities: message.allOffEntities, allOffExcludes: message.allOffExcludes, people: message.people, go2rtc: message.go2rtc, occupancy: message.occupancy, ha: message.ha }); return;
       case 'catalogue': this.handlers.onCatalogue(message.catalogue); return;
       case 'custom': this.handlers.onCustom(message.custom); return;
       case 'entities': this.handlers.onEntities(message.changed, Boolean(message.snapshot)); return;

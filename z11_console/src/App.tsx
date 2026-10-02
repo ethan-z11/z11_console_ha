@@ -227,11 +227,16 @@ function Console({ authenticated, onLogout, onOpenSetup }: ConsoleProps) {
   const runningOthers = runningDevices.filter((device) => !favorites.includes(device.id));
   const runningInFavorites = runningDevices.filter((device) => isRunning(device) && favorites.includes(device.id)).length;
   // “一键关闭”按设置里选的类别与区域过滤；默认只关灯，可选空调/地暖、风扇、窗帘等；额外实体 ID 也纳入。
+  // 目标集合取全屋所有运行中设备（含常用设备——常用只是展示位置，不应影响能否被一键关闭），
+  // 再剔除设置里勾选的排除实体。
   const allOffKinds = server.status?.allOffKinds ?? ['light'];
   const allOffScopes = server.status?.allOffScopes ?? [];
   const allOffEntities = server.status?.allOffEntities ?? [];
-  const allOffTargets = runningOthers.filter((device) =>
-    (allOffKinds.includes(device.kind) || allOffEntities.includes(device.id)) &&
+  const allOffExcludes = server.status?.allOffExcludes ?? [];
+  const allOffTargets = runningDevices.filter((device) =>
+    (allOffKinds.includes(device.kind) || (device.kind === 'heating' && allOffKinds.includes('climate'))
+      || allOffEntities.includes(device.id)) &&
+    !allOffExcludes.includes(device.id) &&
     device.available && isRunning(device) &&
     (allOffScopes.length === 0 || allOffScopes.includes(device.roomId)),
   );

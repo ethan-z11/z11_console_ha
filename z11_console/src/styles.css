@@ -732,6 +732,11 @@ strong { font-weight: 600; }
 .all-off-entities__list li { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px solid var(--hairline); border-radius: var(--radius-sm); background: var(--surface-2); font-size: 13px; }
 .all-off-entities__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .all-off-entities__id { color: var(--text-3); font-size: 11px; overflow-wrap: anywhere; }
+.all-off-excludes { flex: 1; min-width: 220px; display: grid; gap: 10px; }
+.all-off-excludes__hint { margin: 0; font-size: 12px; color: var(--text-3); }
+.all-off-excludes__group { display: grid; gap: 6px; }
+.all-off-excludes__room { font-size: 12px; font-weight: 600; color: var(--text-2); }
+.all-off-excludes .small-button svg { opacity: .7; }
 .settings-switch { position: relative; width: 50px; height: 30px; flex: none; padding: 0; border: 1px solid var(--hairline-strong); border-radius: 999px; background: var(--surface-3); transition: background-color .2s, border-color .2s; }
 .settings-switch > span { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--text-2); transition: transform .2s var(--ease), background-color .2s; }
 .settings-switch[aria-checked="true"] { border-color: transparent; background: var(--accent); }

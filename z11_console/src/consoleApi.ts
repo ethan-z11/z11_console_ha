@@ -24,6 +24,8 @@ export interface AdminSettings {
   allOffScopes: string[];
   /** “一键关闭”额外指定的实体 ID。 */
   allOffEntities: string[];
+  /** “一键关闭”要排除的实体 ID。 */
+  allOffExcludes: string[];
   /** 人员在家配置列表。 */
   people: PersonConfig[];
   season: Season | null;

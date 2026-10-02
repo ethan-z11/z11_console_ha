@@ -302,6 +302,7 @@ class ConsoleServer:
                 "musicUrl": settings.music_url,
                 "allOffKinds": settings.all_off_kinds, "allOffScopes": settings.all_off_scopes,
                 "allOffEntities": settings.all_off_entities,
+                "allOffExcludes": settings.all_off_excludes,
                 "people": self._people_status(),
                 "occupancy": self._occupancy_status(),
                 "go2rtc": {"enabled": bool(settings.go2rtc_url), "modes": PLAYER_MODES},
@@ -997,6 +998,11 @@ class ConsoleServer:
             if entities != settings.all_off_entities:
                 settings.all_off_entities = entities
                 changed.append("allOffEntities")
+        if "allOffExcludes" in body:
+            excludes = id_list(body["allOffExcludes"]) or []
+            if excludes != settings.all_off_excludes:
+                settings.all_off_excludes = excludes
+                changed.append("allOffExcludes")
         if "people" in body:
             people = body["people"]
             if not isinstance(people, list):

@@ -342,6 +342,8 @@ class Settings:
     all_off_scopes: list[str] = field(default_factory=list)
     # “一键关闭”额外指定的实体 ID（不在上面的类别内、但也要一起关闭）。
     all_off_entities: list[str] = field(default_factory=list)
+    # “一键关闭”排除的实体 ID（即使符合类别/区域也不关闭）。
+    all_off_excludes: list[str] = field(default_factory=list)
     # 人员在家配置：每人 id/name/entityId/image(自定义图片名,null=默认)/homeStates(判定在家的状态值列表)
     people: list[dict[str, Any]] = field(default_factory=list)
 
@@ -366,6 +368,7 @@ class Settings:
             "allOffKinds": self.all_off_kinds,
             "allOffScopes": self.all_off_scopes,
             "allOffEntities": self.all_off_entities,
+            "allOffExcludes": self.all_off_excludes,
             "people": self.people,
         }
 
@@ -460,6 +463,7 @@ class Store:
             all_off_kinds=id_list(raw.get("allOffKinds")) or ["light"],
             all_off_scopes=id_list(raw.get("allOffScopes")) or [],
             all_off_entities=id_list(raw.get("allOffEntities")) or [],
+            all_off_excludes=id_list(raw.get("allOffExcludes")) or [],
             people=raw.get("people") if isinstance(raw.get("people"), list) else [],
         )
 
@@ -484,6 +488,7 @@ class Store:
             "allOffKinds": settings.all_off_kinds,
             "allOffScopes": settings.all_off_scopes,
             "allOffEntities": settings.all_off_entities,
+            "allOffExcludes": settings.all_off_excludes,
             "people": settings.people,
         }
         _write_private(self.settings_path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")

@@ -309,6 +309,15 @@ export function SettingsPage({ status, user, firstRun, onLogout, onOpenSetup, on
     void save({ allOffEntities: (settings.allOffEntities ?? []).filter((entity) => entity !== id) }, setAllOffMessage, `已移除实体：${id}`);
   }
 
+  /** “一键关闭”排除实体勾选：候选来自已加入所选区域且设备类别符合的实体。 */
+  function toggleAllOffExclude(id: string) {
+    if (!settings) return;
+    const current = settings.allOffExcludes ?? [];
+    const next = current.includes(id) ? current.filter((entity) => entity !== id) : [...current, id];
+    void save({ allOffExcludes: next }, setAllOffMessage,
+      next.length ? `一键关闭将排除 ${next.length} 个实体` : '已清空一键关闭排除实体');
+  }
+
   /** 查实体的显示名称：先查自定义名，再查已发现实体名，都没有就显示 ID。 */
   function entityDisplayName(id: string): string {
     const customName = custom?.entities?.[id]?.name;
@@ -347,6 +356,22 @@ export function SettingsPage({ status, user, firstRun, onLogout, onOpenSetup, on
   const live = settings.dataSource === 'live';
   const [liveTone, liveText] = connectionText(status?.ha ?? null);
   const connected = live && status?.ha.kind === 'connected';
+
+  // “一键关闭”排除候选：已加入所选区域（区域为空=全部房间）且类别属于所选设备类别的实体，按房间分组。
+  const KIND_DOMAINS: Record<string, string[]> = {
+    light: ['light'], climate: ['climate'], fan: ['fan'], cover: ['cover'], switch: ['switch', 'input_boolean'],
+  };
+  const allOffKindDomains = new Set((settings.allOffKinds ?? ['light']).flatMap((kind) => KIND_DOMAINS[kind] ?? []));
+  const allOffScopeSet = new Set(settings.allOffScopes ?? []);
+  const excludeCandidates = (discovered?.entities ?? [])
+    .filter((entity) => allOffKindDomains.has(entity.domain))
+    .map((entity) => ({ entity, roomId: custom?.assignments?.[entity.id] ?? '' }))
+    .filter(({ roomId }) => roomId && (allOffScopeSet.size === 0 || allOffScopeSet.has(roomId)));
+  const excludeGroups = custom
+    ? custom.rooms
+        .map((room) => ({ room, items: excludeCandidates.filter((item) => item.roomId === room.id) }))
+        .filter((group) => group.items.length > 0)
+    : [];
 
   return (
     <div className="settings">
@@ -416,7 +441,7 @@ export function SettingsPage({ status, user, firstRun, onLogout, onOpenSetup, on
           </section>
 
           <section className="settings-card">
-            <div className="settings-card__heading"><span className="tile__chip"><Power size={20} /></span><div><h3>一键关闭</h3><p>首页"正在运行"的一键关闭按钮默认只关闭灯；可以在这里勾选额外的设备类别和限制的区域。不选区域表示全部房间。</p></div></div>
+            <div className="settings-card__heading"><span className="tile__chip"><Power size={20} /></span><div><h3>一键关闭</h3><p>首页"正在运行"的一键关闭按钮默认只关闭灯（含常用设备中的灯）；可以在这里勾选额外的设备类别、限制区域，并排除个别实体。不选区域表示全部房间。</p></div></div>
             <div className="settings-row settings-row--wrap">
               <span id={`${formId}-allOffKinds`}>设备类别</span>
               <div className="settings-chips" role="group" aria-labelledby={`${formId}-allOffKinds`}>
@@ -462,6 +487,43 @@ export function SettingsPage({ status, user, firstRun, onLogout, onOpenSetup, on
                       </li>
                     ))}
                   </ul>
+                )}
+              </div>
+            </div>
+            <div className="settings-row settings-row--wrap">
+              <span id={`${formId}-allOffExcludes`}>排除实体</span>
+              <div className="all-off-excludes">
+                <p className="all-off-excludes__hint">勾选的实体即使正在运行、符合上面的类别与区域，也不会被一键关闭。候选来自已加入所选区域、且属于所选类别的设备。</p>
+                {excludeGroups.length > 0 ? excludeGroups.map((group) => (
+                  <div key={group.room.id} className="all-off-excludes__group">
+                    <span className="all-off-excludes__room">{group.room.name}</span>
+                    <div className="settings-chips" role="group" aria-label={`${group.room.name} 可排除的实体`}>
+                      {group.items.map(({ entity }) => {
+                        const selected = (settings.allOffExcludes ?? []).includes(entity.id);
+                        return (
+                          <button key={entity.id} type="button" className={`small-button${selected ? ' small-button--selected' : ''}`} aria-pressed={selected} title={entity.id} onClick={() => toggleAllOffExclude(entity.id)}>
+                            {selected ? <X size={13} /> : <Plus size={13} />}{entityDisplayName(entity.id)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )) : (
+                  <p className="settings-message">所选区域和类别下暂没有已加入房间的设备。</p>
+                )}
+                {(settings.allOffExcludes ?? []).filter((id) => !excludeCandidates.some((item) => item.entity.id === id)).length > 0 && (
+                  <div className="all-off-excludes__group">
+                    <span className="all-off-excludes__room">已不在候选中</span>
+                    <div className="settings-chips">
+                      {(settings.allOffExcludes ?? [])
+                        .filter((id) => !excludeCandidates.some((item) => item.entity.id === id))
+                        .map((id) => (
+                          <button key={id} type="button" className="small-button small-button--selected" title={id} onClick={() => toggleAllOffExclude(id)}>
+                            <X size={13} />{entityDisplayName(id)}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
