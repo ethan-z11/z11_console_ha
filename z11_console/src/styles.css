@@ -58,25 +58,26 @@
 
 /* ---------- 浅色主题（设置 → 显示 → 主题） ---------- */
 :root[data-theme="light"] {
-  --bg: #f2f1ed;
-  --rail: #eae8e3;
+  /* 底色整体加深一档，让奶白玻璃卡片明显浮起，不再与背景糊成一片 */
+  --bg: #e2e0d9;
+  --rail: #e0ded8;
   --surface: #ffffff;
-  --surface-2: #f0eee9;
-  --surface-3: #e5e2dc;
+  --surface-2: #efede8;
+  --surface-3: #e2dfd8;
   --surface-on: #fffaf1;
-  --hairline: rgba(30, 28, 20, .08);
-  --hairline-strong: rgba(30, 28, 20, .15);
-  --highlight: inset 0 1px 0 rgba(255, 255, 255, .8);
-  --shadow: 0 12px 28px -20px rgba(60, 50, 30, .45);
-  /* 浅色模式毛玻璃：奶白半透 */
-  --glass: rgba(255, 255, 255, .66);
-  --glass-strong: rgba(255, 255, 255, .84);
+  --hairline: rgba(30, 28, 20, .1);
+  --hairline-strong: rgba(30, 28, 20, .16);
+  --highlight: inset 0 1px 0 rgba(255, 255, 255, .85);
+  --shadow: 0 18px 38px -20px rgba(55, 45, 28, .5);
+  /* 浅色模式毛玻璃：高不透明奶白 + 深色细描边，边界清晰 */
+  --glass: rgba(255, 255, 255, .82);
+  --glass-strong: rgba(255, 255, 255, .93);
   --glass-blur: blur(24px) saturate(180%);
-  --glass-border: rgba(255, 255, 255, .72);
-  --rail-glass: rgba(242, 241, 237, .74);
+  --glass-border: rgba(30, 28, 20, .1);
+  --rail-glass: rgba(228, 226, 219, .85);
   --text: #1c1e20;
-  --text-2: #5a6166;
-  --text-3: #8a9095;
+  --text-2: #52595e;
+  --text-3: #7d8388;
   --accent: #e0922c;
   --accent-rgb: 224, 146, 44;
   --accent-ink: #2b1f0f;
@@ -91,9 +92,9 @@
   --sheen: rgba(255, 255, 255, .7);
   --overlay: rgba(30, 28, 20, .035);
   --overlay-2: rgba(30, 28, 20, .09);
-  --popover: rgba(255, 255, 255, .86);
-  --dialog: rgba(252, 251, 248, .88);
-  --backdrop: rgba(40, 36, 28, .32);
+  --popover: rgba(255, 255, 255, .92);
+  --dialog: rgba(253, 252, 249, .94);
+  --backdrop: rgba(40, 36, 28, .38);
   --toast: #fff1ef;
   --alert-text: #a3261c;
   --alert-soft-text: #b0291f;
@@ -175,13 +176,13 @@ strong { font-weight: 600; }
   background-attachment: fixed;
   color: var(--text);
 }
-/* 浅色模式底色浅，氛围光整体收敛，靠毛玻璃白雾呈现层次 */
+/* 浅色模式底色加深后，氛围光相应加强，玻璃卡片透出的彩色更明确 */
 :root[data-theme="light"] .app-shell {
   background:
-    radial-gradient(1100px 620px at 8% -14%, rgba(var(--accent-rgb), .12), transparent 60%),
-    radial-gradient(960px 600px at 102% -10%, rgba(10, 132, 255, .1), transparent 62%),
-    radial-gradient(1040px 660px at 98% 110%, rgba(175, 82, 222, .08), transparent 64%),
-    radial-gradient(1200px 740px at 26% 122%, rgba(var(--accent-rgb), .05), transparent 66%),
+    radial-gradient(1100px 620px at 8% -14%, rgba(var(--accent-rgb), .17), transparent 60%),
+    radial-gradient(960px 600px at 102% -10%, rgba(10, 132, 255, .14), transparent 62%),
+    radial-gradient(1040px 660px at 98% 110%, rgba(175, 82, 222, .12), transparent 64%),
+    radial-gradient(1200px 740px at 26% 122%, rgba(var(--accent-rgb), .08), transparent 66%),
     var(--bg);
 }
 
@@ -1154,7 +1155,7 @@ strong { font-weight: 600; }
 .hero.hero--settings { min-height: 0; }
 .hero--home .hero__top { position: relative; z-index: 2; }
 /* 天气卡宽度用 vw 精确表达（页头宽 = 视口 - 侧栏 196px），hero__main 预留同宽右距 + 间隙；
-   状态药丸再多也只在左列换行，不钻到天气卡下方与体感温湿度文字重叠。 */
+   状态药丸再多也只在左列换行，不钻到天气卡下方与湿度/风力文字重叠。 */
 .hero--home { --weather-w: min(calc((100vw - 196px) * .6), 860px); }
 .hero--home .hero__main { padding-right: calc(var(--weather-w) + 30px); }
 .hero--home > .weather-hero { position: absolute; top: 14px; right: calc(var(--gutter) - 16px); bottom: 8px; z-index: 1; width: var(--weather-w); max-width: none; margin: 0; padding: 14px 22px 16px; justify-content: space-between; }

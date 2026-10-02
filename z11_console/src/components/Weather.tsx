@@ -105,7 +105,7 @@ function NowCard({ forecast }: { forecast: Forecast }) {
         <div>
           <strong className="weather-now__temp">{now.temp}<small>°</small></strong>
           <span className="weather-now__text">{now.text}</span>
-          <span className="weather-now__range">{today && `${today.tempMin}° / ${today.tempMax}° · `}体感 {now.feelsLike}°</span>
+          <span className="weather-now__range">{today && `${today.tempMin}° / ${today.tempMax}°`}</span>
         </div>
       </div>
       <dl className="weather-now__metrics">
@@ -242,7 +242,7 @@ export function WeatherHero({ weather, now, onOpen }: { weather: WeatherState; n
           <strong>{current.temp}<small>°</small></strong>
         </span>
         <span className="weather-hero__text">{current.text}{today && ` · ${today.tempMin}° / ${today.tempMax}°`}</span>
-        <span className="weather-hero__meta">体感 {current.feelsLike}° · 湿度 {current.humidity}% · {current.windDir} {current.windScale} 级</span>
+        <span className="weather-hero__meta">湿度 {current.humidity}% · {current.windDir} {current.windScale} 级</span>
       </span>
       <span className="weather-hero__days" aria-hidden="true">
         {forecast.daily.slice(1, 6).map((day) => {
