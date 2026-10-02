@@ -61,6 +61,14 @@ export const ACCENTS = [
   { value: 'sky', label: '天蓝', swatch: '#6fb8ff' },
   { value: 'teal', label: '青绿', swatch: '#4fd1c1' },
   { value: 'green', label: '草绿', swatch: '#7fd67a' },
+  { value: 'blue', label: '苹果蓝', swatch: '#0a84ff' },
+  { value: 'indigo', label: '靛蓝', swatch: '#5e5ce6' },
+  { value: 'purple', label: '薰衣紫', swatch: '#bf5af2' },
+  { value: 'pink', label: '樱花粉', swatch: '#ff375f' },
+  { value: 'orange', label: '活力橙', swatch: '#ff9f0a' },
+  { value: 'yellow', label: '柠檬黄', swatch: '#ffd60a' },
+  { value: 'mint', label: '薄荷', swatch: '#63e6e2' },
+  { value: 'cyan', label: '冰青', swatch: '#64d2ff' },
 ] as const;
 export type Accent = (typeof ACCENTS)[number]['value'];
 

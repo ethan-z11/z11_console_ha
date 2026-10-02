@@ -24,7 +24,8 @@ from cryptography.fernet import Fernet, InvalidToken
 
 DEFAULT_PIN = "1234"
 THEMES = ("dark", "light", "auto")
-ACCENTS = ("amber", "coral", "rose", "violet", "sky", "teal", "green")  # 强调色，第一个为默认
+ACCENTS = ("amber", "coral", "rose", "violet", "sky", "teal", "green",
+           "blue", "indigo", "purple", "pink", "orange", "yellow", "mint", "cyan")  # 强调色，第一个为默认
 DEFAULT_HOME_TITLE = "我的家庭"
 HOME_TITLE_MAX = 12
 DEFAULT_HOME_SUBTITLE = ""

@@ -101,6 +101,24 @@
 :root[data-theme="light"][data-accent="teal"] { --accent: #16968a; --accent-rgb: 22, 150, 138; --accent-ink: #ffffff; --accent-hover: #2aa699; }
 :root[data-accent="green"] { --accent: #7fd67a; --accent-rgb: 127, 214, 122; --accent-ink: #10240f; --accent-hover: #9be096; }
 :root[data-theme="light"][data-accent="green"] { --accent: #3e9a3a; --accent-rgb: 62, 154, 58; --accent-ink: #ffffff; --accent-hover: #53aa4f; }
+/* 苹果 iOS / iPadOS 系统色（深色模式值） */
+:root[data-accent="blue"] { --accent: #0a84ff; --accent-rgb: 10, 132, 255; --accent-ink: #ffffff; --accent-hover: #3a9cff; }
+:root[data-accent="indigo"] { --accent: #5e5ce6; --accent-rgb: 94, 92, 230; --accent-ink: #ffffff; --accent-hover: #7876ec; }
+:root[data-accent="purple"] { --accent: #bf5af2; --accent-rgb: 191, 90, 242; --accent-ink: #ffffff; --accent-hover: #cd78f5; }
+:root[data-accent="pink"] { --accent: #ff375f; --accent-rgb: 255, 55, 95; --accent-ink: #ffffff; --accent-hover: #ff5c7c; }
+:root[data-accent="orange"] { --accent: #ff9f0a; --accent-rgb: 255, 159, 10; --accent-ink: #2e1900; --accent-hover: #ffb340; }
+:root[data-accent="yellow"] { --accent: #ffd60a; --accent-rgb: 255, 214, 10; --accent-ink: #302600; --accent-hover: #ffdf3d; }
+:root[data-accent="mint"] { --accent: #63e6e2; --accent-rgb: 99, 230, 226; --accent-ink: #062421; --accent-hover: #85ece9; }
+:root[data-accent="cyan"] { --accent: #64d2ff; --accent-rgb: 100, 210, 255; --accent-ink: #05222e; --accent-hover: #86ddff; }
+/* 苹果系统色浅色模式值 */
+:root[data-theme="light"][data-accent="blue"] { --accent: #007aff; --accent-rgb: 0, 122, 255; --accent-ink: #ffffff; --accent-hover: #3394ff; }
+:root[data-theme="light"][data-accent="indigo"] { --accent: #5856d6; --accent-rgb: 88, 86, 214; --accent-ink: #ffffff; --accent-hover: #7472df; }
+:root[data-theme="light"][data-accent="purple"] { --accent: #af52de; --accent-rgb: 175, 82, 222; --accent-ink: #ffffff; --accent-hover: #c070e6; }
+:root[data-theme="light"][data-accent="pink"] { --accent: #ff2d55; --accent-rgb: 255, 45, 85; --accent-ink: #ffffff; --accent-hover: #ff5577; }
+:root[data-theme="light"][data-accent="orange"] { --accent: #ff9500; --accent-rgb: 255, 149, 0; --accent-ink: #ffffff; --accent-hover: #ffab33; }
+:root[data-theme="light"][data-accent="yellow"] { --accent: #ffcc00; --accent-rgb: 255, 204, 0; --accent-ink: #3a2e00; --accent-hover: #ffd633; }
+:root[data-theme="light"][data-accent="mint"] { --accent: #00c7be; --accent-rgb: 0, 199, 190; --accent-ink: #ffffff; --accent-hover: #33d2cb; }
+:root[data-theme="light"][data-accent="cyan"] { --accent: #32ade6; --accent-rgb: 50, 173, 230; --accent-ink: #ffffff; --accent-hover: #5abdec; }
 
 :root[data-theme="light"] .weather--night { --wx: #6c62c8; }
 :root[data-theme="light"] .weather--cloud { --wx: #7a8794; }
@@ -136,8 +154,8 @@ strong { font-weight: 600; }
   grid-template-rows: auto minmax(0, 1fr);
   min-height: 100dvh;
   background:
-    radial-gradient(900px 420px at 18% -8%, rgba(var(--accent-rgb), .075), transparent 62%),
-    radial-gradient(700px 360px at 100% 0%, rgba(114, 182, 255, .04), transparent 60%),
+    radial-gradient(1000px 480px at 14% -10%, rgba(var(--accent-rgb), .07), transparent 62%),
+    radial-gradient(820px 460px at 100% -6%, rgba(var(--accent-rgb), .045), transparent 64%),
     var(--bg);
   color: var(--text);
 }
@@ -1031,8 +1049,9 @@ strong { font-weight: 600; }
 .hero--weather::before, .hero--weather::after { position: absolute; inset: 0; z-index: -1; content: ''; pointer-events: none; }
 .hero--weather::before {
   background:
-    radial-gradient(55% 150% at 90% 0%, color-mix(in srgb, var(--wx) 22%, transparent), transparent 70%),
-    radial-gradient(40% 100% at 72% 100%, color-mix(in srgb, var(--wx) 8%, transparent), transparent 70%);
+    radial-gradient(72% 165% at 94% -12%, color-mix(in srgb, var(--wx) 20%, transparent), transparent 72%),
+    radial-gradient(46% 120% at 76% 108%, color-mix(in srgb, var(--wx) 7%, transparent), transparent 72%),
+    radial-gradient(38% 90% at 60% 4%, color-mix(in srgb, var(--wx) 5%, transparent), transparent 70%);
 }
 .hero--weather::after { opacity: 0; -webkit-mask-image: linear-gradient(90deg, transparent 35%, #000 80%); mask-image: linear-gradient(90deg, transparent 35%, #000 80%); }
 .hero--weather.weather--rain::after, .hero--weather.weather--storm::after {
@@ -1065,6 +1084,7 @@ strong { font-weight: 600; }
 @keyframes weather-snow { to { background-position: 30px 420px, 60px 670px; } }
 
 .weather-hero { position: relative; isolation: isolate; display: flex; flex: none; flex-direction: column; align-items: stretch; gap: 10px; max-width: 100%; margin-top: 12px; padding: 12px 16px; overflow: hidden; border: 0; border-radius: 22px; background: transparent; color: var(--text); text-align: left; transition: background-color .2s; }
+.weather-hero::before { position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: linear-gradient(100deg, transparent 12%, color-mix(in srgb, var(--wx) 7%, transparent) 72%, color-mix(in srgb, var(--wx) 12%, transparent)); opacity: .8; content: ''; pointer-events: none; }
 .weather-hero:hover { background: var(--overlay); }
 .weather-hero__backdrop { position: absolute; top: 50%; right: -18px; z-index: -1; color: var(--wx); opacity: .07; transform: translateY(-50%); pointer-events: none; }
 .weather-hero__body { display: flex; align-items: flex-end; gap: 26px; }
