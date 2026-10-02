@@ -196,7 +196,8 @@ async def proxy_ws(request: web.Request, base_url: str) -> web.WebSocketResponse
                     await client_ws.close()
 
             await asyncio.gather(pump_to_upstream(), pump_to_client())
-    except aiohttp.ClientError as error:
+    except (aiohttp.ClientError, ConnectionResetError, asyncio.TimeoutError) as error:
+        # 浏览器关弹窗/切页时客户端先断开，写回会抛 ConnectionResetError——属正常结束，静默处理。
         log.debug("go2rtc WS 代理结束：%s", error)
     finally:
         await session.close()

@@ -349,23 +349,29 @@ class MotionScreenshotter:
         kwargs: dict = {"stdout": asyncio.subprocess.DEVNULL, "stderr": asyncio.subprocess.PIPE}
         if sys.platform == "win32":
             kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        async with self._capture_semaphore:
-            stderr = b""
-            try:
-                proc = await asyncio.create_subprocess_exec(*args, **kwargs)
-                _, stderr = await asyncio.wait_for(proc.communicate(), timeout=15.0)
-            except (asyncio.TimeoutError, OSError) as error:
-                log.info("摄像头 %s 抓拍失败：%s", name, error)
-                temp_path.unlink(missing_ok=True)
+        # 摄像头并发连接有限（弹窗 WebRTC 播放会占一路），偶发被拒时等 3 秒再试一次。
+        detail = ""
+        for attempt in (1, 2):
+            if attempt == 2:
+                await asyncio.sleep(3.0)
+            async with self._capture_semaphore:
+                try:
+                    proc = await asyncio.create_subprocess_exec(*args, **kwargs)
+                    _, stderr = await asyncio.wait_for(proc.communicate(), timeout=15.0)
+                except (asyncio.TimeoutError, OSError) as error:
+                    detail = str(error)
+                    temp_path.unlink(missing_ok=True)
+                    continue
+            if proc.returncode == 0 and temp_path.exists() and temp_path.stat().st_size >= 1024:
+                os.replace(temp_path, final_path)
+                self._enforce_cap(target_dir)
+                log.info("摄像头 %s 检测到运动，已保存截图 %s", name, final_path.name)
                 return
-        if proc.returncode != 0 or not temp_path.exists() or temp_path.stat().st_size < 1024:
-            detail = stderr.decode("utf-8", "ignore").strip()[:200]
-            log.info("摄像头 %s 抓拍失败：ffmpeg %s %s", name, proc.returncode, detail)
+            detail = f"ffmpeg {proc.returncode} {stderr.decode('utf-8', 'ignore').strip()[:200]}"
             temp_path.unlink(missing_ok=True)
-            return
-        os.replace(temp_path, final_path)
-        self._enforce_cap(target_dir)
-        log.info("摄像头 %s 检测到运动，已保存截图 %s", name, final_path.name)
+            if attempt == 1:
+                log.info("摄像头 %s 抓拍失败（%s），3 秒后重试", name, detail)
+        log.info("摄像头 %s 抓拍失败：%s", name, detail)
 
     @staticmethod
     def _unique_path(directory: Path, stamp: str) -> Path:
