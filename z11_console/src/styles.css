@@ -283,7 +283,8 @@ strong { font-weight: 600; }
 /* 大画面弹窗：沿用设备详情弹窗，宽度加大到 760，画面 16:9（双类提高特异性，压过 .device-dialog 的 440px） */
 .device-dialog.camera-dialog { width: min(760px, calc(100vw - 24px)); padding: 18px; }
 .camera-dialog .device-dialog__heading { margin-bottom: 14px; }
-.camera-dialog > .camera-stream { aspect-ratio: 16 / 9; border: 1px solid var(--hairline-strong); border-radius: 18px; }
+/* 注意用后代选择器（非子代），因为 ONVIF 弹窗的 .camera-stream 嵌套在 .camera-dialog__onvif 里 */
+.camera-dialog .camera-stream { aspect-ratio: 16 / 9; min-height: 200px; border: 1px solid var(--hairline-strong); border-radius: 18px; }
 
 /* ONVIF 大画面弹窗：云台方向键 + 运动截图 */
 .camera-dialog__onvif { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 18px; margin-top: 16px; }
