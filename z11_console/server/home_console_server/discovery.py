@@ -42,11 +42,23 @@ def is_lunar_entity(domain: str, entity_id: str, friendly_name: str) -> bool:
     return LUNAR_NAME_KEYWORD in friendly_name or any(keyword in lowered for keyword in LUNAR_ID_KEYWORDS)
 
 
-def relevant(domain: str, device_class: str | None) -> bool:
+# 人在类 sensor：Aqara FP2 等毫米波雷达的区域占用是 sensor（state 为 occupied / 区域名），而非 binary_sensor。
+OCCUPANCY_SENSOR_ID_KEYWORDS = ("occupancy", "presence", "mmwave", "_pir")
+OCCUPANCY_SENSOR_NAME_KEYWORDS = ("人在", "存在", "占用", "人体", "无人")
+
+
+def is_occupancy_sensor(entity_id: str, friendly_name: str) -> bool:
+    object_id = entity_id.split(".", 1)[-1].lower()
+    if any(keyword in object_id for keyword in OCCUPANCY_SENSOR_ID_KEYWORDS):
+        return True
+    return any(keyword in friendly_name for keyword in OCCUPANCY_SENSOR_NAME_KEYWORDS)
+
+
+def relevant(domain: str, device_class: str | None, entity_id: str = "", friendly_name: str = "") -> bool:
     if domain in CONTROL_DOMAINS or domain in SCENE_DOMAINS or domain == "person":
         return True
     if domain == "sensor":
-        return device_class in SENSOR_CLASSES
+        return device_class in SENSOR_CLASSES or is_occupancy_sensor(entity_id, friendly_name)
     if domain == "binary_sensor":
         return device_class in BINARY_CLASSES
     return False
@@ -180,7 +192,7 @@ def build_catalogue(areas: list[dict[str, Any]], devices: list[dict[str, Any]], 
         device_class = attributes.get("device_class") or entry.get("device_class") or entry.get("original_device_class")
         friendly = str(attributes.get("friendly_name") or entry.get("name") or entry.get("original_name") or entity_id)
         lunar = is_lunar_entity(domain, entity_id, friendly)
-        if not lunar and not relevant(domain, device_class):
+        if not lunar and not relevant(domain, device_class, entity_id, friendly):
             continue
         area_id = entry.get("area_id") or device_area.get(entry.get("device_id"))
         if area_id not in area_names:
