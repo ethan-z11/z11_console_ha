@@ -9,6 +9,12 @@
   --hairline: rgba(255, 255, 255, .06);
   --hairline-strong: rgba(255, 255, 255, .12);
   --highlight: inset 0 1px 0 rgba(255, 255, 255, .045);
+  /* 毛玻璃（苹果 frosted glass）：卡片半透明 + 背景模糊，让 app-shell 的彩色氛围透出来 */
+  --glass: rgba(24, 27, 31, .66);
+  --glass-strong: rgba(29, 32, 37, .82);
+  --glass-blur: blur(24px) saturate(170%);
+  --glass-border: rgba(255, 255, 255, .1);
+  --rail-glass: rgba(13, 15, 17, .72);
   --shadow: 0 14px 30px -18px rgba(0, 0, 0, .85);
   --text: #f4f4f1;
   --text-2: #a8afb3;
@@ -31,8 +37,8 @@
   --sheen: rgba(255, 255, 255, .022);
   --overlay: rgba(255, 255, 255, .035);
   --overlay-2: rgba(255, 255, 255, .08);
-  --popover: #1d2025;
-  --dialog: #1a1d21;
+  --popover: rgba(29, 32, 37, .88);
+  --dialog: rgba(23, 26, 30, .88);
   --backdrop: rgba(4, 5, 6, .66);
   --toast: #2a1715;
   --alert-text: #ffd9d3;
@@ -62,6 +68,12 @@
   --hairline-strong: rgba(30, 28, 20, .15);
   --highlight: inset 0 1px 0 rgba(255, 255, 255, .8);
   --shadow: 0 12px 28px -20px rgba(60, 50, 30, .45);
+  /* 浅色模式毛玻璃：奶白半透 */
+  --glass: rgba(255, 255, 255, .66);
+  --glass-strong: rgba(255, 255, 255, .84);
+  --glass-blur: blur(24px) saturate(180%);
+  --glass-border: rgba(255, 255, 255, .72);
+  --rail-glass: rgba(242, 241, 237, .74);
   --text: #1c1e20;
   --text-2: #5a6166;
   --text-3: #8a9095;
@@ -79,8 +91,8 @@
   --sheen: rgba(255, 255, 255, .7);
   --overlay: rgba(30, 28, 20, .035);
   --overlay-2: rgba(30, 28, 20, .09);
-  --popover: #ffffff;
-  --dialog: #fbfaf8;
+  --popover: rgba(255, 255, 255, .86);
+  --dialog: rgba(252, 251, 248, .88);
   --backdrop: rgba(40, 36, 28, .32);
   --toast: #fff1ef;
   --alert-text: #a3261c;
@@ -153,11 +165,24 @@ strong { font-weight: 600; }
   grid-template-columns: 196px minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
   min-height: 100dvh;
+  /* 苹果壁纸式多彩氛围：强调色（左上）+ 冰蓝（右上）+ 薰衣紫（右下），毛玻璃卡片把颜色揉进来 */
   background:
-    radial-gradient(1000px 480px at 14% -10%, rgba(var(--accent-rgb), .07), transparent 62%),
-    radial-gradient(820px 460px at 100% -6%, rgba(var(--accent-rgb), .045), transparent 64%),
+    radial-gradient(1100px 620px at 8% -14%, rgba(var(--accent-rgb), .17), transparent 60%),
+    radial-gradient(960px 600px at 102% -10%, rgba(54, 150, 255, .16), transparent 62%),
+    radial-gradient(1040px 660px at 98% 110%, rgba(181, 96, 240, .12), transparent 64%),
+    radial-gradient(1200px 740px at 26% 122%, rgba(var(--accent-rgb), .07), transparent 66%),
     var(--bg);
+  background-attachment: fixed;
   color: var(--text);
+}
+/* 浅色模式底色浅，氛围光整体收敛，靠毛玻璃白雾呈现层次 */
+:root[data-theme="light"] .app-shell {
+  background:
+    radial-gradient(1100px 620px at 8% -14%, rgba(var(--accent-rgb), .12), transparent 60%),
+    radial-gradient(960px 600px at 102% -10%, rgba(10, 132, 255, .1), transparent 62%),
+    radial-gradient(1040px 660px at 98% 110%, rgba(175, 82, 222, .08), transparent 64%),
+    radial-gradient(1200px 740px at 26% 122%, rgba(var(--accent-rgb), .05), transparent 66%),
+    var(--bg);
 }
 
 .side-nav {
@@ -171,8 +196,10 @@ strong { font-weight: 600; }
   gap: 26px;
   height: 100dvh;
   padding: calc(24px + env(safe-area-inset-top)) 14px 20px;
-  border-right: 1px solid var(--hairline);
-  background: var(--rail);
+  border-right: 1px solid var(--glass-border);
+  background: var(--rail-glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
 }
 .side-nav__brand { display: flex; align-items: center; gap: 10px; padding: 0 6px; font-size: 15px; font-weight: 600; letter-spacing: .02em; }
 .side-nav__brand > span:last-child { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }
@@ -235,7 +262,7 @@ strong { font-weight: 600; }
 /* 宽屏侧栏左下角已有日期，页头只放一句话；平板窄栏与手机没有日期，才在句子后补上。 */
 .hero__brand-date { display: none; }
 .hero__actions { justify-content: flex-end; }
-.demo-flag { display: inline-flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 12px; border: 1px solid var(--hairline); border-radius: 999px; background: var(--surface); color: var(--text-2); font-size: 12px; white-space: nowrap; }
+.demo-flag { display: inline-flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 12px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font-size: 12px; white-space: nowrap; -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%); }
 .demo-flag > span { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), .18); animation: pulse 2.4s ease-in-out infinite; }
 .text-button { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: var(--text-3); font-size: 12px; transition: color .18s, background-color .18s; }
 .text-button:hover { background: var(--surface); color: var(--text); }
@@ -252,7 +279,7 @@ strong { font-weight: 600; }
 .status-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
 /* 没有任何活动状态时整行隐藏，不留空白间距。 */
 .status-row:empty { display: none; }
-.status-pill { --pill-tone: var(--text-2); display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 5px 13px 5px 11px; border: 1px solid var(--hairline); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 12.5px; box-shadow: var(--highlight); }
+.status-pill { --pill-tone: var(--text-2); display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 5px 13px 5px 11px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text); font-size: 12.5px; box-shadow: var(--highlight); -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%); }
 .status-pill svg { flex: none; color: var(--pill-tone); }
 .status-pill--light { --pill-tone: var(--accent); }
 .status-pill--cool { --pill-tone: var(--cool); }
@@ -358,7 +385,7 @@ strong { font-weight: 600; }
 .section-heading h2 em { color: var(--text-3); font-size: 13px; font-style: normal; font-weight: 500; font-variant-numeric: tabular-nums; }
 .section-heading > span, .section-heading__actions > span { color: var(--text-3); font-size: 12px; }
 .section-heading__actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
-.small-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 14px; border: 1px solid var(--hairline-strong); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 12.5px; box-shadow: var(--highlight); transition: background-color .18s, border-color .18s, color .18s; }
+.small-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 14px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass); color: var(--text); font-size: 12.5px; box-shadow: var(--highlight); -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); transition: background-color .18s, border-color .18s, color .18s; }
 .small-button:hover { background: var(--surface-2); }
 .small-button--selected { border-color: transparent; background: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .small-button--selected:hover { background: var(--accent-hover); }
@@ -385,9 +412,11 @@ strong { font-weight: 600; }
   min-height: 0;
   padding: 15px;
   overflow: hidden;
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius);
-  background: linear-gradient(180deg, var(--sheen), transparent 55%), var(--surface);
+  background: linear-gradient(180deg, var(--sheen), transparent 55%), var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   box-shadow: var(--highlight), var(--shadow);
   /* 格子缩放：按 100% 的 146px 基准排版，再整体缩放到格子大小，字号、按钮、图标一起变化；100% 时不缩放。 */
   width: calc(100% / var(--tile-scale, 1));
@@ -529,7 +558,7 @@ strong { font-weight: 600; }
 .vacuum-card__dialog { display: flex; flex-direction: column; gap: 12px; }
 
 /* ---------- Color palette popover & light dialog ---------- */
-.light-palette { position: fixed; z-index: 1000; display: grid; gap: 16px; width: min(304px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 16px; overflow-y: auto; border: 1px solid var(--hairline-strong); border-radius: 20px; background: var(--popover); color: var(--text); box-shadow: var(--highlight), 0 24px 60px -12px rgba(0, 0, 0, .8); animation: pop-in .2s var(--ease) both; }
+.light-palette { position: fixed; z-index: 1000; display: grid; gap: 16px; width: min(304px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 16px; overflow-y: auto; border: 1px solid var(--glass-border); border-radius: 20px; background: var(--popover); color: var(--text); box-shadow: var(--highlight), 0 24px 60px -12px rgba(0, 0, 0, .8); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); animation: pop-in .2s var(--ease) both; }
 .light-palette__heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .light-palette__heading strong { font-size: 15px; }
 .light-palette__heading button { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--text-2); }
@@ -553,9 +582,9 @@ strong { font-weight: 600; }
 .light-card__preset:focus-visible, .light-card__swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .light-card__preset:disabled, .light-card__swatch:disabled { opacity: .45; cursor: not-allowed; }
 
-.light-detail-dialog, .device-dialog { width: min(440px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 22px; overflow-y: auto; border: 1px solid var(--hairline-strong); border-radius: 26px; background: var(--dialog); color: var(--text); box-shadow: var(--highlight), 0 30px 80px -20px rgba(0, 0, 0, .9); }
+.light-detail-dialog, .device-dialog { width: min(440px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 22px; overflow-y: auto; border: 1px solid var(--glass-border); border-radius: 26px; background: var(--dialog); color: var(--text); box-shadow: var(--highlight), 0 30px 80px -20px rgba(0, 0, 0, .9); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); }
 .light-detail-dialog[open], .device-dialog[open] { animation: pop-in .24s var(--ease) both; }
-.light-detail-dialog::backdrop, .device-dialog::backdrop { background: var(--backdrop); }
+.light-detail-dialog::backdrop, .device-dialog::backdrop { background: var(--backdrop); -webkit-backdrop-filter: blur(10px) saturate(140%); backdrop-filter: blur(10px) saturate(140%); }
 .light-detail-dialog__heading, .device-dialog__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
 .light-detail-dialog__heading small, .device-dialog__heading small { color: var(--text-3); font-size: 12px; }
 .light-detail-dialog__heading h2, .device-dialog__heading h2 { margin: 3px 0 0; font-size: 22px; font-weight: 650; letter-spacing: -.01em; }
@@ -727,7 +756,7 @@ strong { font-weight: 600; }
 .settings { display: grid; gap: 16px; max-width: 760px; width: 100%; min-width: 0; }
 .settings > * { min-width: 0; }
 .settings-tabs-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
-.settings-tabs { display: flex; gap: 4px; min-width: 0; padding: 4px; overflow-x: auto; border: 1px solid var(--hairline); border-radius: 999px; background: var(--surface); box-shadow: var(--highlight); scrollbar-width: none; }
+.settings-tabs { display: flex; gap: 4px; min-width: 0; padding: 4px; overflow-x: auto; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass); box-shadow: var(--highlight); -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%); scrollbar-width: none; }
 .settings-tabs::-webkit-scrollbar { display: none; }
 .settings-tabs button { display: inline-flex; flex: none; align-items: center; gap: 7px; min-height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font-size: 13.5px; white-space: nowrap; transition: background-color .18s, color .18s; }
 .settings-tabs button:hover { color: var(--text); }
@@ -735,8 +764,8 @@ strong { font-weight: 600; }
 .settings-tabs button[aria-selected="true"] svg { color: var(--accent); }
 .settings-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .settings-panel { display: grid; gap: 16px; min-width: 0; }
-.settings-card { display: grid; gap: 16px; padding: 20px; min-width: 0; border: 1px solid var(--hairline); border-radius: var(--radius); background: var(--surface); box-shadow: var(--highlight), var(--shadow); }
-.settings-card--warn { border-color: var(--alert); background: color-mix(in srgb, var(--alert) 8%, var(--surface)); }
+.settings-card { display: grid; gap: 16px; padding: 20px; min-width: 0; border: 1px solid var(--glass-border); border-radius: var(--radius); background: linear-gradient(180deg, var(--sheen), transparent 55%), var(--glass); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: var(--highlight), var(--shadow); }
+.settings-card--warn { border-color: var(--alert); background: color-mix(in srgb, var(--alert) 10%, var(--glass)); }
 /* 可折叠板块：标题行整行可点，展开时箭头旋转；收起时只占一行，避免长列表翻找 */
 .settings-card--collapse { display: block; padding: 0; }
 .settings-card__bar { display: flex; align-items: center; gap: 12px; width: 100%; padding: 16px 20px; background: none; border: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; border-radius: var(--radius); }
@@ -996,7 +1025,7 @@ strong { font-weight: 600; }
 .weather-search__field:focus-within { border-color: var(--accent); color: var(--text-2); }
 .weather-search__field input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text); font-size: 14px; outline: none; }
 .weather-search__field input::placeholder { color: var(--text-3); }
-.weather-results { position: absolute; z-index: 30; top: calc(100% + 6px); right: 0; left: 0; max-height: 320px; padding: 6px; overflow-y: auto; border: 1px solid var(--hairline-strong); border-radius: 16px; background: var(--popover); box-shadow: var(--highlight), 0 20px 50px -12px rgba(0, 0, 0, .8); animation: pop-in .16s var(--ease) both; }
+.weather-results { position: absolute; z-index: 30; top: calc(100% + 6px); right: 0; left: 0; max-height: 320px; padding: 6px; overflow-y: auto; border: 1px solid var(--glass-border); border-radius: 16px; background: var(--popover); box-shadow: var(--highlight), 0 20px 50px -12px rgba(0, 0, 0, .8); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); animation: pop-in .16s var(--ease) both; }
 .weather-results button { display: flex; align-items: baseline; gap: 8px; width: 100%; min-height: 40px; padding: 8px 12px; border: 0; border-radius: 11px; background: transparent; color: var(--text); text-align: left; }
 .weather-results button:hover, .weather-results button:focus-visible { background: var(--surface-2); }
 .weather-results button span { overflow: hidden; color: var(--text-3); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
@@ -1046,12 +1075,15 @@ strong { font-weight: 600; }
 .hero { position: relative; isolation: isolate; }
 .hero__body { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
 .hero__main { flex: 1; min-width: 0; }
-.hero--weather::before, .hero--weather::after { position: absolute; inset: 0; z-index: -1; content: ''; pointer-events: none; }
+.hero--weather::before, .hero--weather::after { position: absolute; z-index: -1; content: ''; pointer-events: none; }
+/* 氛围光向下溢出 360px：透过毛玻璃卡片渗进内容区，消除页头与板块的硬切分裂感 */
+.hero--weather::before { inset: 0 0 -360px; }
+.hero--weather::after { inset: 0; }
 .hero--weather::before {
   background:
-    radial-gradient(72% 165% at 94% -12%, color-mix(in srgb, var(--wx) 20%, transparent), transparent 72%),
-    radial-gradient(46% 120% at 76% 108%, color-mix(in srgb, var(--wx) 7%, transparent), transparent 72%),
-    radial-gradient(38% 90% at 60% 4%, color-mix(in srgb, var(--wx) 5%, transparent), transparent 70%);
+    radial-gradient(78% 130% at 94% 8%, color-mix(in srgb, var(--wx) 22%, transparent), transparent 70%),
+    radial-gradient(60% 72% at 72% 74%, color-mix(in srgb, var(--wx) 11%, transparent), transparent 74%),
+    radial-gradient(96% 60% at 44% 106%, color-mix(in srgb, var(--wx) 10%, transparent), transparent 76%);
 }
 .hero--weather::after { opacity: 0; -webkit-mask-image: linear-gradient(90deg, transparent 35%, #000 80%); mask-image: linear-gradient(90deg, transparent 35%, #000 80%); }
 .hero--weather.weather--rain::after, .hero--weather.weather--storm::after {
@@ -1120,7 +1152,15 @@ strong { font-weight: 600; }
 /* 设置页没有状态标签，也不参与上下滑动切换，页头按内容高度即可。 */
 .hero.hero--settings { min-height: 0; }
 .hero--home .hero__top { position: relative; z-index: 2; }
-.hero--home > .weather-hero { position: absolute; top: 14px; right: calc(var(--gutter) - 16px); bottom: 8px; z-index: 1; width: min(62%, 900px); max-width: none; margin: 0; padding: 14px 22px 16px; justify-content: space-between; }
+/* 天气卡宽度用 vw 精确表达（页头宽 = 视口 - 侧栏 196px），hero__main 预留同宽右距 + 间隙；
+   状态药丸再多也只在左列换行，不钻到天气卡下方与体感温湿度文字重叠。 */
+.hero--home { --weather-w: min(calc((100vw - 196px) * .6), 860px); }
+.hero--home .hero__main { padding-right: calc(var(--weather-w) + 30px); }
+.hero--home > .weather-hero { position: absolute; top: 14px; right: calc(var(--gutter) - 16px); bottom: 8px; z-index: 1; width: var(--weather-w); max-width: none; margin: 0; padding: 14px 22px 16px; justify-content: space-between; }
+/* 平板窄栏：侧栏 84px */
+@media (max-width: 1100px) { .hero--home { --weather-w: calc((100vw - 84px) * .6); } }
+/* 手机：大天气卡隐藏（用标题行紧凑天气），预留取消 */
+@media (max-width: 720px) { .hero--home { --weather-w: 0px; } .hero--home .hero__main { padding-right: 0; } }
 .hero--home > .weather-hero .weather-hero__place { min-height: 34px; font-size: 14px; }
 .hero--home > .weather-hero .weather-hero__body { flex: 1; align-items: center; gap: clamp(20px, 3vw, 44px); }
 .hero--home > .weather-hero .weather-hero__icon { width: clamp(48px, 4.4vw, 64px); height: clamp(48px, 4.4vw, 64px); }
