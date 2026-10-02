@@ -39,6 +39,11 @@ export function formatDate(date: Date): string {
   return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
 }
 
+/** 日期拆成两个不可分割的片段：「10月3日」和「周六」各自必须整体换行，不能拆成单字。 */
+export function formatDateParts(date: Date): { monthDay: string; weekday: string } {
+  return { monthDay: `${date.getMonth() + 1}月${date.getDate()}日`, weekday: weekdays[date.getDay()] };
+}
+
 export function formatTime(date: Date): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }

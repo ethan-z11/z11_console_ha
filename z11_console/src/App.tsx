@@ -23,7 +23,7 @@ import { getMe, logout, putLayout } from './consoleApi';
 import { allowedSizesForDevice, favoriteIds, favoriteSizeKey, fromServerLayout, layoutKey, orderedDevices, orderedRooms, readLayout, saveLayout, tileSizeForDevice, toServerLayout, toggleFavorite } from './layout';
 import { getRoomDevices, isClimate, isLit, isRunning, sortRunning } from './selectors';
 import { sceneDisplayName, sceneTargetService } from './haAdapter';
-import { formatDate, formatTime, homeGreeting, useNow } from './time';
+import { formatDateParts, formatTime, homeGreeting, useNow } from './time';
 import { isIngress, kioskOn, restoreKiosk, setKiosk } from './kiosk';
 import type { Device, DeviceActions, LayoutState, Room, TileSize } from './types';
 import { useConsole } from './useConsole';
@@ -254,7 +254,8 @@ function Console({ authenticated, onLogout, onOpenSetup }: ConsoleProps) {
   // 同步网页标题为家庭名称
   useEffect(() => { document.title = brandTitle; }, [brandTitle]);
   // 我的家庭页大标题就是当前时间：19:49 9月28日 周一（侧栏导航仍用首页名称）。
-  const homeClock = `${formatTime(now)} ${formatDate(now)}`;
+  // 时间/日期/星期三个片段各自不可拆行，换行只能发生在片段之间。
+  const homeClockParts = formatDateParts(now);
   // 全屋页页头按当前天气着色，其他页面保持中性。
   const heroTone = page === 'home' && weather.forecast ? weatherIcon(weather.forecast.now.icon).tone : null;
 
@@ -441,7 +442,7 @@ function Console({ authenticated, onLogout, onOpenSetup }: ConsoleProps) {
       <header className={`hero${page === 'home' ? ' hero--home' : ''}${page === 'settings' ? ' hero--settings' : ''}${heroTone ? ` hero--weather weather--${heroTone}` : ''}`}>
         {page === 'room' && <RoomScene key={selectedRoom.id} room={selectedRoom} lit={selectedRoomLitCount > 0} />}
         <div className="hero__top">
-          <span className="hero__brand">{homeGreeting(now)}<span className="hero__brand-date"> · {formatDate(now)}</span></span>
+          <span className="hero__brand">{homeGreeting(now)}<span className="hero__brand-date"> · <span className="datetime__part">{homeClockParts.monthDay}</span> <span className="datetime__part">{homeClockParts.weekday}</span></span></span>
           <div className="hero__actions">
             {!canControl && <span className="demo-flag demo-flag--readonly"><Eye size={14} />只读模式</span>}
             <ConnectionBadge quiet={page !== 'home'} connected={server.connected} status={server.status} staleSince={server.staleSince} offlineSince={server.offlineSince} now={now} />
@@ -454,7 +455,7 @@ function Console({ authenticated, onLogout, onOpenSetup }: ConsoleProps) {
           <div className="hero__main">
             <div className="hero__title">
               <div>
-                <h1>{page === 'room' ? selectedRoom.name : page === 'settings' ? '设置' : page === 'music' ? '音乐' : homeClock}{page === 'home' && season && <span className={`season-badge season-badge--${season}`} title="季节规则（设置 → 自动化）">{season === 'summer' ? <Sun size={14} /> : <Snowflake size={14} />}{season === 'summer' ? '夏季' : '冬季'}</span>}{occupancyKnown && occupancyScope && <OccupancyBadge occupied={occupancy?.[occupancyScope] === true} />}</h1>
+                <h1>{page === 'room' ? selectedRoom.name : page === 'settings' ? '设置' : page === 'music' ? '音乐' : <span className="datetime"><span className="datetime__time">{formatTime(now)}</span> <span className="datetime__part">{homeClockParts.monthDay}</span> <span className="datetime__part">{homeClockParts.weekday}</span></span>}{page === 'home' && season && <span className={`season-badge season-badge--${season}`} title="季节规则（设置 → 自动化）">{season === 'summer' ? <Sun size={14} /> : <Snowflake size={14} />}{season === 'summer' ? '夏季' : '冬季'}</span>}{occupancyKnown && occupancyScope && <OccupancyBadge occupied={occupancy?.[occupancyScope] === true} />}</h1>
                 {page === 'home'
                   ? (homeSubline
                     ? <p><button type="button" className="hero__subline-button" onClick={() => setAlmanacOpen(true)} title="点击查看农历详情">{homeSubline}</button></p>

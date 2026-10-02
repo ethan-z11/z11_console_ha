@@ -255,8 +255,8 @@ function PtzPad({ cameraId }: { cameraId: string }) {
 
 interface ShotInfo { file: string; time: string }
 
-/** 运动检测截图浏览：打开弹窗时加载，每 10 秒刷新；点击缩略图看大图。 */
-function ShotStrip({ cameraId, onSelect }: { cameraId: string; onSelect: (shot: ShotInfo) => void }) {
+/** 运动截图列表：弹窗打开期间每 10 秒刷新；缩略条与大图查看器共用一份数据。 */
+function useCameraShots(cameraId: string): ShotInfo[] {
   const [shots, setShots] = useState<ShotInfo[]>([]);
 
   useEffect(() => {
@@ -276,6 +276,11 @@ function ShotStrip({ cameraId, onSelect }: { cameraId: string; onSelect: (shot: 
     return () => { alive = false; window.clearInterval(timer); };
   }, [cameraId]);
 
+  return shots;
+}
+
+/** 运动检测截图缩略条：点击缩略图看大图。 */
+function ShotStrip({ cameraId, shots, onSelect }: { cameraId: string; shots: ShotInfo[]; onSelect: (shot: ShotInfo) => void }) {
   return (
     <div className="camera-shots">
       <h4><ImageIcon size={14} />运动检测截图<em>保留 3 天</em></h4>
@@ -296,13 +301,30 @@ function ShotStrip({ cameraId, onSelect }: { cameraId: string; onSelect: (shot: 
 /** 运动截图大图。
  * 必须用原生 <dialog showModal>：大画面弹窗本身就是模态 dialog，处于浏览器 top layer，
  * 普通 fixed + z-index 元素永远渲染在它下面（大图压在卡片背后的原因）；嵌套模态 dialog 会自动叠在上层。 */
-function ShotViewer({ camera, shot, onClose }: { camera: CameraConfig; shot: ShotInfo; onClose: () => void }) {
+function ShotViewer({ camera, shots, shot, onNavigate, onClose }: { camera: CameraConfig; shots: ShotInfo[]; shot: ShotInfo; onNavigate: (shot: ShotInfo) => void; onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const index = shots.findIndex((item) => item.file === shot.file);
+  const total = shots.length;
+
+  const goto = (next: number) => {
+    if (total === 0) return;
+    onNavigate(shots[((next % total) + total) % total]);
+  };
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (dialog && !dialog.open) openModalQuietly(dialog);
   }, []);
+
+  // 键盘左右方向键切换；Esc 由 dialog 原生 onCancel 处理。不写依赖数组，保证拿到最新列表/序号。
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft') goto(index - 1);
+      else if (event.key === 'ArrowRight') goto(index + 1);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  });
 
   return createPortal(
     <dialog
@@ -313,9 +335,13 @@ function ShotViewer({ camera, shot, onClose }: { camera: CameraConfig; shot: Sho
       onClick={(event) => { if (event.target === dialogRef.current) onClose(); }}
     >
       <button type="button" className="icon-button camera-shot-viewer__close" onClick={onClose} aria-label="关闭截图"><X size={20} /></button>
+      {total > 1 && <>
+        <button type="button" className="camera-shot-viewer__nav camera-shot-viewer__nav--prev" onClick={() => goto(index - 1)} aria-label="上一张截图"><ChevronLeft size={26} /></button>
+        <button type="button" className="camera-shot-viewer__nav camera-shot-viewer__nav--next" onClick={() => goto(index + 1)} aria-label="下一张截图"><ChevronRight size={26} /></button>
+      </>}
       <figure>
-        <img src={apiPath(`/api/camera-shot?cid=${encodeURIComponent(camera.id)}&file=${encodeURIComponent(shot.file)}`)} alt={`运动截图 ${shot.time}`} />
-        <figcaption>{camera.name} · {shot.time}</figcaption>
+        <img key={shot.file} src={apiPath(`/api/camera-shot?cid=${encodeURIComponent(camera.id)}&file=${encodeURIComponent(shot.file)}`)} alt={`运动截图 ${shot.time}`} />
+        <figcaption>{camera.name} · {shot.time}{index >= 0 ? ` · ${index + 1}/${total}` : ''}</figcaption>
       </figure>
     </dialog>,
     document.body,
@@ -325,6 +351,7 @@ function ShotViewer({ camera, shot, onClose }: { camera: CameraConfig; shot: Sho
 /** 大画面弹窗里的 ONVIF 专属区域：云台方向键（设备支持时）+ 运动截图浏览。 */
 function OnvifPanel({ camera }: { camera: CameraConfig }) {
   const [ptz, setPtz] = useState<boolean | null>(null);
+  const shots = useCameraShots(camera.id);
   const [selected, setSelected] = useState<ShotInfo | null>(null);
 
   useEffect(() => {
@@ -346,9 +373,9 @@ function OnvifPanel({ camera }: { camera: CameraConfig }) {
         </div>
       )}
       <div className="camera-dialog__shots">
-        <ShotStrip cameraId={camera.id} onSelect={setSelected} />
+        <ShotStrip cameraId={camera.id} shots={shots} onSelect={setSelected} />
       </div>
-      {selected && <ShotViewer camera={camera} shot={selected} onClose={() => setSelected(null)} />}
+      {selected && <ShotViewer camera={camera} shots={shots} shot={selected} onNavigate={setSelected} onClose={() => setSelected(null)} />}
     </div>
   );
 }
