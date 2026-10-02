@@ -229,7 +229,8 @@ class OnvifClient:
 
     async def create_pullpoint(self, events_url: str) -> str:
         """在事件服务上创建一个拉模式订阅点，返回 PullPoint 地址（后续 PullMessages 打到这里）。"""
-        body = '<tev:CreatePullPointSubscription xmlns:tev="http://www.onvif.org/ver10/events/wsdl"/>'
+        # 部分固件（大华/水星等）要求必须传递 InitialTerminationTime，空 body 会返回 500。
+        body = '<tev:CreatePullPointSubscription xmlns:tev="http://www.onvif.org/ver10/events/wsdl"><tev:InitialTerminationTime>PT10M</tev:InitialTerminationTime></tev:CreatePullPointSubscription>'
         root = await self._call(events_url, "http://www.onvif.org/ver10/events/wsdl/CreatePullPointSubscription", body)
         # SubscriptionReference/Address，命名空间前缀不固定，按 local-name 找。
         ref = next((el for el in root.iter() if _local_name(el.tag) == "SubscriptionReference"), None)

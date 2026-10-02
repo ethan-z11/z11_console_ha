@@ -1,5 +1,5 @@
 name: Z11 Console
-version: "1.0.24"
+version: "1.0.25"
 slug: z11_console
 description: 轻量家居控制台：房间设备卡片、温湿度、摄像头、天气、扫地机地图，内嵌于 Home Assistant 侧边栏，自动连接本机 HA，无需配置令牌。
 url: https://github.com/ethan-z11/z11_console_ha
