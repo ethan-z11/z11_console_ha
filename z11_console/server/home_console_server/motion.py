@@ -149,7 +149,7 @@ class MotionScreenshotter:
                             await self._run_events(camera_id, name, camera, rtsp_url, stop_event)
                         except OnvifError as error:
                             log.info("摄像头 %s 不支持 ONVIF 事件（%s），改用帧差兜底", name, error)
-                            await self._run_ffmpeg_fallback(camera_id, name, rtsp_url, stop_event)
+                            await self._run_ffmpeg_fallback(camera_id, name, camera, rtsp_url, stop_event)
                 except asyncio.CancelledError:
                     raise
                 except Exception as error:
@@ -213,7 +213,8 @@ class MotionScreenshotter:
                 self._schedule_capture(camera_id, name, rtsp_url)
                 self._schedule_capture(camera_id, name, rtsp_url, delay=SECOND_CAPTURE_DELAY)
 
-    async def _run_ffmpeg_fallback(self, camera_id: str, name: str, rtsp_url: str, stop_event: asyncio.Event) -> None:
+    async def _run_ffmpeg_fallback(self, camera_id: str, name: str, camera: dict,
+                                   rtsp_url: str, stop_event: asyncio.Event) -> None:
         """摄像头不支持 ONVIF 事件时的兜底：用 ffmpeg 压成低帧率灰度流做相邻帧差。"""
         if not self._ffmpeg_path:
             raise RuntimeError("服务器没有可用的 ffmpeg")

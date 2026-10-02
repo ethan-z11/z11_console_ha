@@ -33,7 +33,7 @@ from .auth import LoginLimiter, Sessions
 from .automations import DOMAIN as AUTOMATION_DOMAIN, build_automations, demo_automations
 from .cameras import BOUNDARY as CAMERA_BOUNDARY, CameraStreamer
 from .discovery import SCENE_DOMAINS, build_catalogue, filtered, visible_ids
-from .go2rtc import ADDON_CANDIDATES, PLAYER_MODES, check, detect, ensure_stream, normalize_base, proxy_static, proxy_ws
+from .go2rtc import ADDON_CANDIDATES, PLAYER_MODES, check, detect, ensure_stream, normalize_base, player_modes, proxy_static, proxy_ws
 from .ha import HaUpstream
 from .motion import PTZ_DIRECTIONS, MotionScreenshotter
 from .onvif import OnvifError, OnvifManager
@@ -450,7 +450,7 @@ class ConsoleServer:
             await ensure_stream(base_url, name, rtsp_url)
         except Exception as error:
             return web.json_response({"error": f"go2rtc 连接摄像头失败：{error}"}, status=502)
-        return web.json_response({"name": name, "modes": PLAYER_MODES})
+        return web.json_response({"name": name, "modes": await player_modes(base_url)})
 
     async def go2rtc_detect(self, request: web.Request) -> web.Response:
         """POST /api/admin/go2rtc-detect {url?}：测试给定地址，或在 HAOS 内网自动发现 go2rtc。"""

@@ -37,6 +37,10 @@ ALLOWED_STATIC = {"stream.html", "video-stream.js", "video-rtc.js", "favicon.ico
 
 # 播放器回退顺序：WebRTC（UDP）→ WebRTC/TCP（部分路由器 UDP 不通）→ MSE → HLS → MP4（老 iOS）→ MJPEG。
 PLAYER_MODES = "webrtc,webrtc/tcp,mse,hls,mp4,mjpeg"
+# go2rtc 的 WebRTC 媒体端口（UDP/TCP 同号）。浏览器走 WebRTC 的前提是它能直连这个端口；
+# 部分部署（如没映射 UDP 的容器 / 跨网络）只有 1984 可达，这时必须从下发模式里剔除 webrtc，
+# 否则播放器把 webrtc 与 mse 绑在同一条 WS 上协商，webrtc 失败会拖垮 mse 报 "streams: EOF"。
+WEBRTC_PORT = 8555
 
 CHECK_TIMEOUT = aiohttp.ClientTimeout(total=6, connect=4)
 PROXY_TIMEOUT = aiohttp.ClientTimeout(total=None, connect=10, sock_connect=10, sock_read=None)
@@ -71,6 +75,38 @@ async def check(base_url: str) -> dict:
         except aiohttp.ClientError as error:
             raise RuntimeError(str(error) or "连接失败") from error
     return data if isinstance(data, dict) else {}
+
+
+async def _webrtc_reachable(base_url: str) -> bool:
+    """从本服务视角探测 go2rtc 的 WebRTC UDP 端口是否开放。
+
+    浏览器需直连此端口收发 SRTP；探测不通则从下发模式剔除 webrtc，避免它拖垮 mse。
+    UDP 无连接，用「发包后短时间内收到 ICMP 端口不可达 / 连接被拒」判不可达。
+    """
+    host = urlsplit(base_url).hostname
+    if not host:
+        return False
+    loop = asyncio.get_running_loop()
+    try:
+        transport, _ = await asyncio.wait_for(
+            loop.create_datagram_endpoint(asyncio.DatagramProtocol, remote_addr=(host, WEBRTC_PORT)),
+            timeout=CHECK_TIMEOUT.connect)
+    except (OSError, asyncio.TimeoutError):
+        return False
+    try:
+        transport.sendto(b"\x00")
+        await asyncio.sleep(0.6)  # 等待可能的 ICMP 不可达
+        return True
+    finally:
+        transport.close()
+
+
+async def player_modes(base_url: str) -> str:
+    """按 WebRTC 可达性裁剪下发给播放器的模式串；不可达时从 mse 开始。"""
+    if await _webrtc_reachable(base_url):
+        return PLAYER_MODES
+    log.info("go2rtc 的 WebRTC 端口 %s 不可达，本次画面只用 MSE/HLS/MP4/MJPEG", WEBRTC_PORT)
+    return "mse,hls,mp4,mjpeg"
 
 
 async def detect(candidates: tuple[str, ...] = ADDON_CANDIDATES) -> str | None:
