@@ -56,22 +56,37 @@ function OccupancyBadge({ occupied }: { occupied: boolean }) {
 
 function App() {
   // 账户系统：未登录显示登录页，已登录显示主界面；firstRun=true 时管理员需到设置改账号密码。
-  const [auth, setAuth] = useState<{ loading: boolean; authenticated: boolean; user?: { username: string; isAdmin: boolean }; firstRun: boolean }>(
-    { loading: true, authenticated: false, firstRun: false },
+  // HA 侧边栏 Ingress 访客（me.ingress=true 且无会话）免登录，以非管理员身份直接进主界面。
+  const [auth, setAuth] = useState<{ loading: boolean; authenticated: boolean; ingress: boolean; user?: { username: string; isAdmin: boolean }; firstRun: boolean }>(
+    { loading: true, authenticated: false, ingress: false, firstRun: false },
   );
   // 首跑管理员登录后直接进入「管理员修改」；用户取消后才进入主界面，仍可从 设置→安全 再次调起。
   const [setupDismissed, setSetupDismissed] = useState(false);
   useEffect(() => {
     let active = true;
     getMe()
-      .then((me) => { if (active) setAuth({ loading: false, authenticated: me.authenticated, user: me.user, firstRun: Boolean(me.firstRun) }); })
-      .catch(() => { if (active) setAuth({ loading: false, authenticated: false, firstRun: false }); });
+      .then((me) => {
+        if (!active) return;
+        if (!me.authenticated && me.ingress) {
+          // 侧边栏访客：HA 已做过登录认证，直接进入主界面（非管理员）。
+          setAuth({ loading: false, authenticated: true, ingress: true, user: { username: '侧边栏访客', isAdmin: false }, firstRun: false });
+          return;
+        }
+        setAuth({ loading: false, authenticated: me.authenticated, ingress: Boolean(me.ingress), user: me.user, firstRun: Boolean(me.firstRun) });
+      })
+      .catch(() => { if (active) setAuth({ loading: false, authenticated: false, ingress: false, firstRun: false }); });
     return () => { active = false; };
   }, []);
   function refreshAuth() {
-    getMe().then((me) => setAuth({ loading: false, authenticated: me.authenticated, user: me.user, firstRun: Boolean(me.firstRun) })).catch(() => undefined);
+    getMe().then((me) => {
+      if (!me.authenticated && me.ingress) {
+        setAuth({ loading: false, authenticated: true, ingress: true, user: { username: '侧边栏访客', isAdmin: false }, firstRun: false });
+        return;
+      }
+      setAuth({ loading: false, authenticated: me.authenticated, ingress: Boolean(me.ingress), user: me.user, firstRun: Boolean(me.firstRun) });
+    }).catch(() => undefined);
   }
-  /** 退出登录：先调后端清除会话与 Cookie，再刷新本地鉴权状态回到登录页。 */
+  /** 退出登录：先调后端清除会话与 Cookie，再刷新本地鉴权状态（Ingress 下回到访客态，否则回登录页）。 */
   function handleLogout() {
     logout().finally(refreshAuth);
   }
@@ -80,17 +95,18 @@ function App() {
   if (auth.user?.isAdmin && auth.firstRun && !setupDismissed) {
     return <SetupPage currentUsername={auth.user.username} onCompleted={refreshAuth} onCancel={() => setSetupDismissed(true)} />;
   }
-  return <Console authenticated={auth} onLogout={handleLogout} onOpenSetup={() => setSetupDismissed(false)} />;
+  return <Console authenticated={auth} onLogout={handleLogout} onAuthenticated={refreshAuth} onOpenSetup={() => setSetupDismissed(false)} />;
 }
 
 interface ConsoleProps {
-  authenticated: { loading: boolean; authenticated: boolean; user?: { username: string; isAdmin: boolean }; firstRun: boolean };
+  authenticated: { loading: boolean; authenticated: boolean; ingress: boolean; user?: { username: string; isAdmin: boolean }; firstRun: boolean };
   onLogout: () => void;
+  onAuthenticated: () => void;
   onOpenSetup: () => void;
 }
 
 /** 主控制台：已登录后显示。 */
-function Console({ authenticated, onLogout, onOpenSetup }: ConsoleProps) {
+function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: ConsoleProps) {
   const server = useConsole();
   const live = server.status?.dataSource === 'live';
   const { home: sourceHome, runningIds, actions: deviceActions, refreshRunning, reset, notice, clearNotice } = useHome(
@@ -518,7 +534,7 @@ function Console({ authenticated, onLogout, onOpenSetup }: ConsoleProps) {
               : <EmptyRoomCard name={selectedRoom.name} />}
           </>
         )}
-        {page === 'settings' && <SettingsPage status={server.status} user={authenticated.user} firstRun={authenticated.firstRun} onLogout={onLogout} onOpenSetup={onOpenSetup} onExpired={settingsExpired} />}
+        {page === 'settings' && <SettingsPage status={server.status} user={authenticated.user} ingress={authenticated.ingress} firstRun={authenticated.firstRun} onLogout={onLogout} onAuthenticated={onAuthenticated} onOpenSetup={onOpenSetup} onExpired={settingsExpired} />}
         {page === 'music' && (musicUrl ? <MusicPage url={musicUrl} /> : <div className="empty-room"><p>还没有配置音乐界面，请到 设置 → 音乐 中填写地址。</p></div>)}
       </main>
 

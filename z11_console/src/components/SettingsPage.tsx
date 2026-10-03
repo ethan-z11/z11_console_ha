@@ -2,7 +2,7 @@ import { Cctv, DoorOpen, Grid2x2, History, House, KeyRound, LayoutTemplate, List
 import { useEffect, useId, useState } from 'react';
 import type { CSSProperties, FormEvent, KeyboardEvent } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { apiPath, ApiError, changePassword, createAccount, deleteAccount, getAccounts, getAudit, getCustom, getEntities, getSettings, request, updateSettings, uploadPeopleImage } from '../consoleApi';
+import { apiPath, ApiError, changePassword, createAccount, deleteAccount, getAccounts, getAudit, getCustom, getEntities, getSettings, login as loginApi, request, updateSettings, uploadPeopleImage } from '../consoleApi';
 import type { AccountInfo, AdminSettings, AuditEntry, DiscoveredEntities, PersonConfig } from '../consoleApi';
 import type { CustomConfig } from '../consoleClient';
 import type { ServerStatus } from '../consoleClient';
@@ -17,10 +17,14 @@ interface SettingsPageProps {
   status: ServerStatus | null;
   /** 当前登录账户；未登录时为 undefined（理论上不会进入此页）。 */
   user?: { username: string; isAdmin: boolean };
+  /** 是否从 HA 侧边栏 Ingress 进入（访客免登录，设置时需验证管理员）。 */
+  ingress: boolean;
   /** 是否处于首跑引导（管理员尚未修改默认账号密码）。 */
   firstRun: boolean;
   /** 退出登录：清除本地状态后回到登录页。 */
   onLogout: () => void;
+  /** 在设置页完成管理员账号验证后，刷新外层鉴权状态以解锁全部板块。 */
+  onAuthenticated: () => void;
   /** 打开首跑引导页（修改管理员账号与密码）。 */
   onOpenSetup: () => void;
   /** 会话过期或后端拒绝时退回，并提示原因。 */
@@ -87,7 +91,7 @@ function auditDetail(entry: AuditEntry): string {
 }
 
 /** 管理设置；账户系统下任何已登录用户进入，非管理员仅可见「登录」板块，管理员可见全部板块。 */
-export function SettingsPage({ status, user, firstRun, onLogout, onOpenSetup, onExpired }: SettingsPageProps) {
+export function SettingsPage({ status, user, ingress, firstRun, onLogout, onAuthenticated, onOpenSetup, onExpired }: SettingsPageProps) {
   const formId = useId();
   const isAdmin = user?.isAdmin ?? false;
   // 非管理员只能看见「登录」板块；管理员看见全部。
@@ -349,7 +353,7 @@ export function SettingsPage({ status, user, firstRun, onLogout, onOpenSetup, on
     // 非管理员：直接渲染「登录」板块，不依赖 settings 数据。
     return (
       <div className="settings">
-        <LoginSection user={user} onLogout={onLogout} />
+        <LoginSection user={user} ingress={ingress} onLogout={onLogout} onAuthenticated={onAuthenticated} />
       </div>
     );
   }
@@ -701,7 +705,7 @@ export function SettingsPage({ status, user, firstRun, onLogout, onOpenSetup, on
           </section>
         </>}
 
-        {tab === 'login' && <LoginSection user={user} onLogout={onLogout} />}
+        {tab === 'login' && <LoginSection user={user} ingress={ingress} onLogout={onLogout} onAuthenticated={onAuthenticated} />}
 
         {tab === 'audit' && (
           <section className="settings-card">
@@ -734,19 +738,87 @@ export function SettingsPage({ status, user, firstRun, onLogout, onOpenSetup, on
   );
 }
 
-/** 「登录」板块：显示当前登录账户与退出登录按钮；非管理员仅可见此板块。 */
-function LoginSection({ user, onLogout }: { user?: { username: string; isAdmin: boolean }; onLogout: () => void }) {
+/** 「登录」板块：管理员显示账户与退出；非管理员（含侧边栏免登录访客）在此验证管理员账号以解锁设置。 */
+function LoginSection({ user, ingress, onLogout, onAuthenticated }: {
+  user?: { username: string; isAdmin: boolean };
+  ingress: boolean;
+  onLogout: () => void;
+  onAuthenticated: () => void;
+}) {
+  const formId = useId();
+  const isAdmin = user?.isAdmin ?? false;
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  async function verifyAdmin(event: FormEvent) {
+    event.preventDefault();
+    if (checking) return;
+    const u = username.trim();
+    if (!u || !password) { setError('请输入管理员账号和密码'); return; }
+    setError(null);
+    setChecking(true);
+    const result = await loginApi(u, password, true).catch((reason: Error) => ({ ok: false as const, message: reason.message }));
+    setChecking(false);
+    if (result.ok) {
+      if (!result.user.isAdmin) { setError('该账户不是管理员账户'); return; }
+      onAuthenticated();
+      return;
+    }
+    setError(result.message);
+  }
+
+  if (isAdmin) {
+    return (
+      <section className="settings-card">
+        <div className="settings-card__heading"><span className="tile__chip"><LogOut size={20} /></span><div><h3>登录</h3><p>当前已登录账户；点「退出登录」后回到登录页，下次进入需重新输入账号密码。</p></div></div>
+        <div className="settings-row">
+          <span>账户</span>
+          <strong>{user?.username ?? '—'}</strong>
+          <small>管理员</small>
+        </div>
+        <div className="settings-actions">
+          <button type="button" className="small-button small-button--danger" onClick={onLogout}><LogOut size={15} />退出登录</button>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="settings-card">
-      <div className="settings-card__heading"><span className="tile__chip"><LogOut size={20} /></span><div><h3>登录</h3><p>当前已登录账户；点「退出登录」后回到登录页，下次进入需重新输入账号密码。</p></div></div>
+      <div className="settings-card__heading"><span className="tile__chip"><ShieldCheck size={20} /></span><div>
+        <h3>管理员验证</h3>
+        <p>{ingress
+          ? '侧边栏访问已由 Home Assistant 完成登录认证，可直接查看和控制设备；修改设置需要再验证管理员账号。'
+          : '当前账户没有设置权限；输入管理员账号验证后可修改设置。'}</p>
+      </div></div>
       <div className="settings-row">
-        <span>账户</span>
-        <strong>{user?.username ?? '—'}</strong>
-        <small>{user?.isAdmin ? '管理员' : '子账户'}</small>
+        <span>当前身份</span>
+        <strong>{ingress ? '侧边栏访客' : (user?.username ?? '子账户')}</strong>
+        <small>{ingress ? '免登录' : '子账户'}</small>
       </div>
-      <div className="settings-actions">
-        <button type="button" className="small-button small-button--danger" onClick={onLogout}><LogOut size={15} />退出登录</button>
-      </div>
+      <form onSubmit={verifyAdmin}>
+        <label className="settings-field" htmlFor={`${formId}-admin-username`}>
+          <span>管理员账号</span>
+          <input id={`${formId}-admin-username`} type="text" autoComplete="username" spellCheck={false} value={username}
+                 onChange={(event) => setUsername(event.target.value)} disabled={checking} placeholder="admin" />
+        </label>
+        <label className="settings-field" htmlFor={`${formId}-admin-password`}>
+          <span>管理员密码</span>
+          <input id={`${formId}-admin-password`} type="password" autoComplete="current-password" value={password}
+                 onChange={(event) => setPassword(event.target.value)} disabled={checking} />
+        </label>
+        {error && <p className="settings-message settings-message--error" role="alert">{error}</p>}
+        <div className="settings-actions">
+          <button type="submit" className="small-button small-button--selected" disabled={checking}>
+            <ShieldCheck size={15} />{checking ? '正在验证…' : '验证管理员'}
+          </button>
+          {!ingress && (
+            <button type="button" className="small-button small-button--danger" onClick={onLogout} disabled={checking}><LogOut size={15} />退出登录</button>
+          )}
+        </div>
+      </form>
     </section>
   );
 }

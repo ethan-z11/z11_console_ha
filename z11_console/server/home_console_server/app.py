@@ -69,6 +69,19 @@ def _cookie_attrs(request: web.Request) -> dict[str, Any]:
     return {"httponly": True, "samesite": samesite, "path": "/", "secure": secure}
 
 
+# ---------- HA 侧边栏 Ingress 访客 ----------
+# HA Supervisor 代理侧边栏请求时会注入 X-Ingress-Path；此时用户已通过 HA 自身的登录认证，
+# 控制台不再要求账号即可浏览 / 控制（非管理员），但设置页仍需验证管理员。
+# 只有加项容器（Supervisor 注入 SUPERVISOR_TOKEN）才信任该头：直连端口部署时即便伪造
+# 此头也无法绕过账号登录（加项的 8765 端口默认不映射宿主机，外部只能走 Ingress）。
+INGRESS_HEADER = "X-Ingress-Path"
+INGRESS_VISITOR = {"username": "侧边栏访客", "isAdmin": False, "remember": True, "ingress": True}
+
+
+def _is_ingress_request(request: web.Request) -> bool:
+    return bool(os.environ.get("SUPERVISOR_TOKEN")) and bool(request.headers.get(INGRESS_HEADER))
+
+
 # ---------- 服务白名单：只允许这些服务及参数，目标必须是当前页面可见的实体 ----------
 
 def _number(low: float, high: float) -> Callable[[Any], bool]:
@@ -651,9 +664,12 @@ class ConsoleServer:
 
     async def handle_ws(self, request: web.Request) -> web.WebSocketResponse:
         # WS 鉴权：未登录拒绝升级，前端在调 /api/admin/me 时已发现未登录并跳登录页。
+        # Ingress 访客（侧边栏）没有会话也允许连接，身份为非管理员「侧边栏访客」。
         session = self._current_session(request)
         if not session:
-            return web.Response(status=401, text="需要登录")
+            if not _is_ingress_request(request):
+                return web.Response(status=401, text="需要登录")
+            session = dict(INGRESS_VISITOR)
         ws = web.WebSocketResponse(heartbeat=30)
         await ws.prepare(request)
         self.clients.add(ws)
@@ -731,30 +747,41 @@ class ConsoleServer:
         return self.sessions.get(request.cookies.get(COOKIE))
 
     def _require_login(self, request: web.Request) -> dict[str, Any]:
-        """要求任意已登录账户；返回 {username, isAdmin, remember}。"""
+        """要求任意已登录账户；返回 {username, isAdmin, remember}。
+
+        HA 侧边栏 Ingress 请求没有会话也放行（合成的非管理员访客）；管理员接口一律不认访客。
+        """
+        session = self._current_session(request)
+        if session:
+            return session
+        if _is_ingress_request(request):
+            return dict(INGRESS_VISITOR)
+        raise web.HTTPUnauthorized(text=json.dumps({"error": "需要登录"}), content_type="application/json")
+
+    def _require_admin(self, request: web.Request) -> dict[str, Any]:
+        """要求管理员账户；返回 {username, isAdmin, remember}。Ingress 访客不在此列，必须用管理员账号登录。"""
         session = self._current_session(request)
         if not session:
             raise web.HTTPUnauthorized(text=json.dumps({"error": "需要登录"}), content_type="application/json")
-        return session
-
-    def _require_admin(self, request: web.Request) -> dict[str, Any]:
-        """要求管理员账户；返回 {username, isAdmin, remember}。"""
-        session = self._require_login(request)
         if not session.get("isAdmin"):
             raise web.HTTPForbidden(text=json.dumps({"error": "需要管理员权限"}), content_type="application/json")
         return session
 
     async def me(self, request: web.Request) -> web.Response:
         """查询当前登录账户与首跑状态；前端据此决定显示登录页 / 引导页 / 主界面。"""
+        ingress = _is_ingress_request(request)
         session = self._current_session(request)
         if not session:
             return web.json_response({
                 "authenticated": False,
+                # Ingress 访客：无账号会话，但前端可免登录直接进主界面（非管理员）。
+                "ingress": ingress,
                 "firstRun": not self.store.setup_completed,
                 "setupCompleted": self.store.setup_completed,
             })
         return web.json_response({
             "authenticated": True,
+            "ingress": ingress,
             "user": {"username": session["username"], "isAdmin": session["isAdmin"]},
             "firstRun": not self.store.setup_completed,
             "setupCompleted": self.store.setup_completed,

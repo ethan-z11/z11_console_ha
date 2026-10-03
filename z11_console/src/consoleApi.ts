@@ -86,6 +86,8 @@ export interface MeResponse {
   /** firstRun=true 表示管理员尚未完成首跑引导（admin/admin 仍是默认值）。 */
   firstRun?: boolean;
   setupCompleted?: boolean;
+  /** true 表示请求来自 HA 侧边栏 Ingress；无会话时前端可免登录以非管理员访客身份进入。 */
+  ingress?: boolean;
 }
 
 /** /api/admin/accounts 返回值。 */
