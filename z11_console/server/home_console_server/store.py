@@ -237,6 +237,9 @@ def clean_custom(raw: Any, known_rooms: set[str] | None = None, known_entities: 
                 rtsp_url = str(item.get("rtspUrl", "")).strip() if isinstance(item.get("rtspUrl"), str) else ""
                 if rtsp_url and RTSP_URL_RE.fullmatch(rtsp_url) and len(rtsp_url) <= CUSTOM_CAMERA_URL_MAX:
                     entry["rtspUrl"] = rtsp_url
+                # 每台摄像头的运动检测开关；缺省视为开启，只在关闭时落一个 False，保持配置干净。
+                if item.get("motionEnabled") is False:
+                    entry["motionEnabled"] = False
         if entry is not None:
             camera_ids.add(camera_id)
             cameras.append(entry)

@@ -515,6 +515,9 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
       const url = cameraUrl.trim();
       if (url && (!/^rtsp:\/\//i.test(url) || url.length > 300 || /\s/.test(url))) { setCameraError('画面地址需以 rtsp:// 开头（不含空格），或留空由 ONVIF 自动探测'); return; }
       entry = { id: editingCameraId ?? newId('c'), name, type: 'onvif', host, port, username, password, scope: cameraScope, ...(url ? { rtspUrl: url } : {}) };
+      // 编辑参数时保留原来的单台运动检测开关。
+      const previous = editingCameraId ? custom.cameras.find((camera) => camera.id === editingCameraId) : undefined;
+      if (previous?.motionEnabled === false) entry.motionEnabled = false;
     }
     const cameras = editingCameraId
       ? custom.cameras.map((camera) => (camera.id === editingCameraId ? entry : camera))
@@ -527,6 +530,21 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
     if (!custom) return;
     if (editingCameraId === cameraId) resetCameraForm();
     void mutate({ ...custom, cameras: custom.cameras.filter((camera) => camera.id !== cameraId) }, '摄像头已删除');
+  }
+
+  /** 单台摄像头的运动检测开关（仅 ONVIF 参与监测）；缺省视为开启，关掉时写入 false。 */
+  function toggleCameraMotion(cameraId: string) {
+    if (!custom) return;
+    const target = custom.cameras.find((camera) => camera.id === cameraId);
+    if (!target) return;
+    const enabled = target.motionEnabled !== false;
+    const cameras = custom.cameras.map((camera) => {
+      if (camera.id !== cameraId) return camera;
+      if (enabled) return { ...camera, motionEnabled: false };
+      const { motionEnabled: _removed, ...rest } = camera;
+      return rest;
+    });
+    void mutate({ ...custom, cameras }, enabled ? `已停止「${target.name}」的截图监测` : `已开启「${target.name}」的截图监测`);
   }
 
   /** 保存某作用域（主页 / 房间）某指标的温湿度来源；同槽位再次保存即自动替代原条目。 */
@@ -734,6 +752,9 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
                       <span className="camera-manage-list__name"><Cctv size={15} /><strong>{camera.name}</strong><em className={`camera-type-tag camera-type-tag--${cameraType(camera)}`}>{cameraType(camera) === 'onvif' ? 'ONVIF' : 'RTSP'}</em></span>
                       <code>{describeCamera(camera)}</code>
                       <span className="camera-manage-list__actions">
+                        {cameraType(camera) === 'onvif' && (
+                          <button type="button" role="switch" className="settings-switch settings-switch--small" aria-checked={camera.motionEnabled !== false} aria-label={`${camera.name} 运动检测截图`} title="运动检测截图" onClick={() => toggleCameraMotion(camera.id)}><span /></button>
+                        )}
                         <button type="button" className="icon-button" onClick={() => startEditCamera(camera)} aria-label={`编辑摄像头 ${camera.name}`}><Pencil size={16} /></button>
                         <button type="button" className="icon-button" onClick={() => deleteCamera(camera.id)} aria-label={`删除摄像头 ${camera.name}`}><Trash2 size={16} /></button>
                       </span>

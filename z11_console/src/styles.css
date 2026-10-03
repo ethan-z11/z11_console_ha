@@ -806,6 +806,10 @@ strong { font-weight: 600; }
 .settings-switch > span { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--text-2); transition: transform .2s var(--ease), background-color .2s; }
 .settings-switch[aria-checked="true"] { border-color: transparent; background: var(--accent); }
 .settings-switch[aria-checked="true"] > span { background: var(--accent-ink); transform: translateX(20px); }
+/* 摄像头管理列表里用的小号开关 */
+.settings-switch--small { width: 40px; height: 24px; }
+.settings-switch--small > span { top: 2px; left: 2px; width: 18px; height: 18px; }
+.settings-switch--small[aria-checked="true"] > span { transform: translateX(16px); }
 /* 浅色主题：白色圆钮，开关两种状态都清爽 */
 :root[data-theme="light"] .settings-switch > span, :root[data-theme="light"] .settings-switch[aria-checked="true"] > span { background: #fff; box-shadow: 0 1px 3px rgba(40, 30, 10, .3); }
 :root[data-theme="light"] .settings-switch { background: var(--surface-3); }

@@ -101,6 +101,8 @@ export interface CameraConfig {
   port?: number;
   username?: string;
   password?: string;
+  /** 运动检测截图的单台开关（仅 ONVIF 参与监测）；缺省视为开启，仅关闭时为 false。 */
+  motionEnabled?: boolean;
 }
 
 /** 统一取接入类型（兼容旧数据）。 */

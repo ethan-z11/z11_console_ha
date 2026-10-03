@@ -90,7 +90,9 @@ class MotionScreenshotter:
         否则旧任务会一直使用启动时传入的配置，编辑不生效。
         """
         by_id = {camera["id"]: camera for camera in cameras}
-        wanted = {camera_id for camera_id, camera in by_id.items() if camera.get("type") == "onvif"}
+        # 运动监测只针对 ONVIF 摄像头；motionEnabled=False 的单台开关优先于全局总开关。
+        wanted = {camera_id for camera_id, camera in by_id.items()
+                  if camera.get("type") == "onvif" and camera.get("motionEnabled", True)}
         for camera_id in list(self._tasks):
             if camera_id not in wanted or self._fingerprints.get(camera_id) != self._fingerprint(by_id[camera_id]):
                 self._stop(camera_id)
