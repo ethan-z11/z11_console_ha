@@ -55,11 +55,12 @@ const METRIC_ROWS: { metric: MetricName; label: string }[] = [
   { metric: 'humidity', label: '湿度' },
 ];
 
-/** 可作“有人”判断的实体：名称（设备名或实体名）含“人”的在线 binary_sensor / sensor（人体 / 人在传感器）。 */
+/** 可作“有人”判断的实体：在线的 binary_sensor / sensor，排除温湿度 / 农历 / 门窗 / 水浸 / 烟雾等无关类型。 */
+const OCCUPANCY_EXCLUDED_CLASSES = new Set(['temperature', 'humidity', 'lunar', 'door', 'window', 'opening', 'garage_door', 'moisture', 'smoke']);
 function isOccupancyCandidate(entity: CatalogueEntity): boolean {
   return entity.available !== false
     && (entity.domain === 'binary_sensor' || entity.domain === 'sensor')
-    && Boolean(entity.deviceName?.includes('人') || entity.name.includes('人'));
+    && !(entity.deviceClass && OCCUPANCY_EXCLUDED_CLASSES.has(entity.deviceClass));
 }
 
 /** 存在 / 占用 / 人体移动类设备在选择列表中排最前。 */
@@ -668,9 +669,9 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
       </CollapsibleCard>
 
       <CollapsibleCard icon={PersonStanding} title="区域有人传感器">
-        <p className="settings-message">为每个区域选择人在 / 存在 / 移动传感器，仅列出名称含“人”的在线 binary_sensor / sensor。可多选，只要其中一个显示有人，该区域就显示有人。</p>
+        <p className="settings-message">为每个区域选择人在 / 存在 / 移动传感器（binary_sensor 或 sensor，已排除温湿度 / 农历 / 门窗 / 水浸 / 烟雾类）。可多选，只要其中一个显示有人，该区域就显示有人。</p>
         {occupancyCandidates.length === 0
-          ? <p className="settings-message">当前没有发现名称含“人”的在线 binary_sensor / sensor 实体（可在 HA 中把传感器设备或实体改名为带“人”字）。</p>
+          ? <p className="settings-message">当前没有可加入的在线 binary_sensor / sensor 实体。</p>
           : (
             <ul className="metric-source-list">
               {[{ id: 'home', name: '我的家庭（主页）' }, ...custom.rooms.map((room) => ({ id: room.id, name: room.name }))].map((scope) => (
