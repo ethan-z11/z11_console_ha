@@ -60,8 +60,9 @@ def relevant(domain: str, device_class: str | None, entity_id: str = "", friendl
     if domain == "sensor":
         return device_class in SENSOR_CLASSES or is_occupancy_sensor(entity_id, friendly_name)
     if domain == "binary_sensor":
-        # 人体 / 人在设备的二元传感器可能没有标准 device_class，按设备名含“人”收录。
-        return device_class in BINARY_CLASSES or "人" in device_name
+        # 人体 / 人在设备的二元传感器可能没有标准 device_class，
+        # 按设备名含“人”或实体名称带人在类关键词收录（与 sensor 域同一套关键词）。
+        return device_class in BINARY_CLASSES or "人" in device_name or is_occupancy_sensor(entity_id, friendly_name)
     return False
 
 
