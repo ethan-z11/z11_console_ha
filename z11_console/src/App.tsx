@@ -34,7 +34,6 @@ import { useAlmanac } from './useAlmanac';
 import { AlmanacDialog } from './components/AlmanacDialog';
 import { weatherIcon } from './weather';
 import { applyAccent, applyTheme, resolveTheme } from './theme';
-import { usePageSwipe } from './usePageSwipe';
 
 type Page = 'home' | 'room' | 'settings' | 'music';
 
@@ -423,28 +422,16 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
     });
   }
 
-  // 右侧内容区上下滑动切换左侧导航：顺序与导航一致（首页、房间、其他空间）。
+  // 右侧内容区页面切换动画的方向基准：顺序与导航一致（首页、房间、其他空间）。
   const navTargets = [
     { key: 'home', label: homeTitle },
     ...[...home.rooms.filter((room) => room.category === 'main'), ...home.rooms.filter((room) => room.category === 'other')].map((room) => ({ key: room.id, label: room.name })),
   ];
   const currentNavIndex = page === 'home' ? 0 : page === 'room' ? navTargets.findIndex((target) => target.key === selectedRoom.id) : -1;
-  const swipeEnabled = currentNavIndex >= 0 && !editingLayout && !weatherOpen && !almanacOpen && !activeList && !selectedClimate && !roomOrderOpen;
-  const swipeHint = usePageSwipe(
-    swipeEnabled,
-    currentNavIndex > 0 ? navTargets[currentNavIndex - 1] : null,
-    currentNavIndex >= 0 && currentNavIndex < navTargets.length - 1 ? navTargets[currentNavIndex + 1] : null,
-    (key) => {
-      if (key === 'home') openHome();
-      else openRoom(key);
-      window.scrollTo({ top: 0 });
-    },
-  );
 
-  // 页面切换动画：页头文字与内容按方向进入；滑动时两者跟随手指（用 translate，不与进入动画的 transform 冲突）。
+  // 页面切换动画：页头文字与内容按方向进入。
   const pageKey = page === 'room' ? `room-${selectedRoom.id}` : page;
   const enterClass = `page-enter page-enter--${enterDirection === 1 ? 'up' : enterDirection === -1 ? 'down' : 'fade'}`;
-  const dragStyle = swipeHint ? { translate: `0 ${swipeHint.offset.toFixed(1)}px` } : undefined;
 
   const editButton = (
     <button type="button" className={`small-button${editingLayout ? ' small-button--selected' : ''}`} onClick={() => editingLayout ? leaveLayoutEditing() : setEditingLayout(true)}>
@@ -453,7 +440,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
   );
 
   return (
-    <div className={`app-shell${swipeHint ? ' app-shell--dragging' : ''}`}>
+    <div className="app-shell">
       <SideNav home={home} homeTitle={homeTitle} current={page === 'room' ? { roomId: selectedRoom.id } : page} now={now} onHome={openHome} onOpenRoom={openRoom} onSettings={requestSettings} onEditRooms={canControl ? () => setRoomOrderOpen(true) : undefined} onOpenMusic={musicUrl ? openMusic : undefined} people={server.status?.people} occupancy={occupancy} brandTitle={server.status?.brandTitle} />
       <header className={`hero${page === 'home' ? ' hero--home' : ''}${page === 'settings' ? ' hero--settings' : ''}${heroTone ? ` hero--weather weather--${heroTone}` : ''}`}>
         {page === 'room' && <RoomScene key={selectedRoom.id} room={selectedRoom} lit={selectedRoomLitCount > 0} />}
@@ -467,7 +454,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
             <button type="button" className="icon-button hero__settings" onClick={requestSettings} aria-current={page === 'settings' ? 'page' : undefined} aria-label="设置" title="设置"><Settings size={18} /></button>
           </div>
         </div>
-        <div className={`hero__body ${enterClass}`} key={pageKey} style={dragStyle}>
+        <div className={`hero__body ${enterClass}`} key={pageKey}>
           <div className="hero__main">
             <div className="hero__title">
               <div>
@@ -487,7 +474,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
         {page === 'home' && <WeatherHero weather={weather} now={now} onOpen={() => setWeatherOpen(true)} />}
       </header>
 
-      <main className={`main-content ${enterClass}`} key={pageKey} style={dragStyle}>
+      <main className={`main-content ${enterClass}`} key={pageKey}>
         {page === 'home' && (
           <>
             {homeCameras.length > 0 && <CameraBoard title="摄像头" cameras={homeCameras} scale={tileScale} go2rtcEnabled={server.status?.go2rtc?.enabled ?? false} />}

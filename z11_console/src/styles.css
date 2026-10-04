@@ -1383,9 +1383,6 @@ html, body { overscroll-behavior-y: none; }
 .page-enter--down { animation: enter-down .45s var(--ease) both; }
 .page-enter--fade { animation: page-in .32s var(--ease) both; }
 .hero__body.page-enter { --enter-distance: 24px; }
-/* 上下滑动时内容跟随手指；松手未切换则弹回。 */
-.main-content, .hero__body { transition: translate .32s var(--ease); }
-.app-shell--dragging .main-content, .app-shell--dragging .hero__body { transition: none; }
 
 /* 卡片依次出现：只在开始前生效（backwards），不影响编辑布局时拖动卡片用的 transform。 */
 @keyframes tile-in { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }

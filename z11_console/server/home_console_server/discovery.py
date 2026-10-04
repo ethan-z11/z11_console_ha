@@ -54,13 +54,14 @@ def is_occupancy_sensor(entity_id: str, friendly_name: str) -> bool:
     return any(keyword in friendly_name for keyword in OCCUPANCY_SENSOR_NAME_KEYWORDS)
 
 
-def relevant(domain: str, device_class: str | None, entity_id: str = "", friendly_name: str = "") -> bool:
+def relevant(domain: str, device_class: str | None, entity_id: str = "", friendly_name: str = "", device_name: str = "") -> bool:
     if domain in CONTROL_DOMAINS or domain in SCENE_DOMAINS or domain == "person":
         return True
     if domain == "sensor":
         return device_class in SENSOR_CLASSES or is_occupancy_sensor(entity_id, friendly_name)
     if domain == "binary_sensor":
-        return device_class in BINARY_CLASSES
+        # 人体 / 人在设备的二元传感器可能没有标准 device_class，按设备名含“人”收录。
+        return device_class in BINARY_CLASSES or "人" in device_name
     return False
 
 
@@ -163,6 +164,8 @@ def build_catalogue(areas: list[dict[str, Any]], devices: list[dict[str, Any]], 
     """返回全部发现结果：labels 为标签表，rooms 为 HA 区域（仅参考），entities 为可显示的实体（不含过滤）。"""
     entries = {entry["entity_id"]: entry for entry in registry}
     device_area = {device["id"]: device.get("area_id") for device in devices}
+    # 设备名（用户改名优先）：有人传感器按“设备名含人”匹配时需要。
+    device_names = {device["id"]: device.get("name_by_user") or device.get("name") or "" for device in devices}
     area_names = {area["area_id"]: area["name"] for area in areas}
     label_names = {label["label_id"]: label.get("name") or label["label_id"] for label in labels}
     # image 域不单独成卡，只作为扫地机地图被关联（如 vacuum.xiao_zhi ↔ image.xiao_zhi_map）。
@@ -192,7 +195,8 @@ def build_catalogue(areas: list[dict[str, Any]], devices: list[dict[str, Any]], 
         device_class = attributes.get("device_class") or entry.get("device_class") or entry.get("original_device_class")
         friendly = str(attributes.get("friendly_name") or entry.get("name") or entry.get("original_name") or entity_id)
         lunar = is_lunar_entity(domain, entity_id, friendly)
-        if not lunar and not relevant(domain, device_class, entity_id, friendly):
+        device_name = device_names.get(entry.get("device_id"), "")
+        if not lunar and not relevant(domain, device_class, entity_id, friendly, device_name):
             continue
         area_id = entry.get("area_id") or device_area.get(entry.get("device_id"))
         if area_id not in area_names:
@@ -208,6 +212,7 @@ def build_catalogue(areas: list[dict[str, Any]], devices: list[dict[str, Any]], 
             "deviceClass": "lunar" if lunar else device_class,
             "areaId": area_id,
             "name": display_name(friendly, area_names.get(area_id)),
+            "deviceName": device_name or None,
             "labels": entity_labels,
             # 规则：unavailable 的实体不进入“可加入房间”的可选范围（已在房间里的仍以离线卡显示）。
             "available": state.get("state") != "unavailable",

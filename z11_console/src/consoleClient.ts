@@ -26,6 +26,8 @@ export interface CatalogueEntity {
   deviceClass: string | null;
   areaId: string | null;
   name: string;
+  /** 所属 HA 设备名（用户改名优先）；有人传感器按“设备名含人”匹配，实体未关联设备时为空。 */
+  deviceName?: string | null;
   /** 实体上的 HA 标签，用于设置页按标签分组与筛选。 */
   labels: LabelInfo[];
   /** 传感器在 HA 中的显示小数位（用户设置优先，其次集成建议）；没有时为 undefined。 */
