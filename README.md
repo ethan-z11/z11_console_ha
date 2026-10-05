@@ -4,7 +4,7 @@
 
 ## 安装
 
-1. 在 Home Assistant 中进入 **设置 → 加载项 → 加载项商店**，点击右上角菜单选择 **仓库**；
+1. 在 Home Assistant 中进入 **设置 → 应用 → 安装应用**，点击右上角菜单选择 **仓库**；
 2. 添加仓库地址：`https://github.com/ethan-z11/z11_console_ha`；
 3. 在商店中找到 **Z11 Console**，点击安装；
 4. 启动加载项后，侧边栏会出现 **Z11 Console** 入口（走 Ingress，无需开放端口）。
