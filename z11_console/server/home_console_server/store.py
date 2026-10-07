@@ -109,7 +109,8 @@ HOME_SCOPE = "home"
 
 
 def clean_custom(raw: Any, known_rooms: set[str] | None = None, known_entities: set[str] | None = None,
-                 known_metrics: dict[str, set[str]] | None = None) -> dict[str, Any]:
+                 known_metrics: dict[str, set[str]] | None = None,
+                 known_battery_entities: set[str] | None = None) -> dict[str, Any]:
     """校验手动房间、设备归属和情景按钮。
 
     保存时以当前发现结果为准：归属房间必须存在、实体必须已发现；未知的条目直接丢弃。
@@ -296,8 +297,55 @@ def clean_custom(raw: Any, known_rooms: set[str] | None = None, known_entities: 
         if picked:
             occupancy[scope] = picked
 
+    # 电量传感器偏好：主页药丸开关、手动剔除列表、自定义名称、首页常驻实体。
+    # enabled 缺省为 True；excluded / highlightEntity 只允许电量 sensor 实体（已知时校验）。
+    battery_raw = raw.get("battery") if isinstance(raw.get("battery"), dict) else {}
+    enabled = battery_raw.get("enabled", True)
+    if not isinstance(enabled, bool):
+        enabled = True
+    excluded_raw = battery_raw.get("excluded") if isinstance(battery_raw.get("excluded"), list) else []
+    excluded: list[str] = []
+    for entity_id in excluded_raw[:200]:
+        if not isinstance(entity_id, str) or not ENTITY_ID_RE.fullmatch(entity_id) or entity_id in excluded:
+            continue
+        if known_battery_entities is not None and entity_id not in known_battery_entities:
+            continue
+        excluded.append(entity_id)
+    names = _battery_names(battery_raw.get("names"))
+    if known_battery_entities is not None:
+        names = {entity_id: name for entity_id, name in names.items() if entity_id in known_battery_entities}
+    highlight = battery_raw.get("highlightEntity")
+    if not isinstance(highlight, str) or not ENTITY_ID_RE.fullmatch(highlight):
+        highlight = None
+    elif known_battery_entities is not None and highlight not in known_battery_entities:
+        highlight = None
+    elif highlight in excluded:
+        highlight = None
+    battery: dict[str, Any] = {"enabled": enabled}
+    if excluded:
+        battery["excluded"] = excluded
+    if names:
+        battery["names"] = names
+    if highlight:
+        battery["highlightEntity"] = highlight
+
     return {"rooms": rooms, "assignments": assignments, "scenes": scenes, "entities": entities,
-            "cameras": cameras, "metricSources": metric_sources, "occupancy": occupancy}
+            "cameras": cameras, "metricSources": metric_sources, "occupancy": occupancy, "battery": battery}
+
+
+def _battery_names(raw: Any) -> dict[str, str]:
+    """电量传感器自定义名称：实体 id → 非空名称。"""
+    names_raw = raw if isinstance(raw, dict) else {}
+    names: dict[str, str] = {}
+    for entity_id, name in names_raw.items():
+        if not isinstance(entity_id, str) or not ENTITY_ID_RE.fullmatch(entity_id):
+            continue
+        if not isinstance(name, str):
+            continue
+        cleaned = " ".join(name.split())
+        if cleaned:
+            names[entity_id] = cleaned
+    return names
 
 
 def id_list(value: Any) -> list[str] | None:

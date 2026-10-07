@@ -1309,6 +1309,17 @@ html, body { overscroll-behavior-y: none; }
 .room-manage-row__name em { color: var(--text-3); font-size: 12px; font-style: normal; white-space: nowrap; }
 .room-manage-row__actions { display: flex; align-items: center; gap: 4px; flex: none; }
 
+/* ---------- 设置 → 电量传感器 ---------- */
+.battery-manage-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.battery-manage-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--bg); }
+.battery-manage-row__icon { display: grid; place-items: center; width: 30px; height: 30px; flex: none; border-radius: 9px; background: var(--surface-2); color: var(--text-3); }
+.battery-manage-row__icon.is-highlight { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.battery-manage-row__name { flex: 1 1 120px; min-width: 0; padding: 6px 10px; border: 1px solid var(--hairline-strong); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text); font-size: 13.5px; outline: none; }
+.battery-manage-row__name:focus { border-color: var(--accent); }
+.battery-manage-row__id { flex: 0 1 160px; min-width: 0; overflow: hidden; color: var(--text-3); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+.battery-manage-excluded { margin-top: 14px; }
+.battery-manage-excluded h4 { margin: 0 0 8px; color: var(--text-3); font-size: 12.5px; font-weight: 500; }
+
 /* ---------- 设置 → 温湿度来源 ---------- */
 .metric-source-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .metric-source-scope { display: grid; gap: 6px; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--bg); }

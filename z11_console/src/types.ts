@@ -68,6 +68,8 @@ export interface BatteryReading {
   name: string;
   level: number | null;
   available: boolean;
+  /** 是否被设为首页常驻显示的那一个。 */
+  highlight?: boolean;
 }
 
 export interface MediaDevice extends BaseDevice {

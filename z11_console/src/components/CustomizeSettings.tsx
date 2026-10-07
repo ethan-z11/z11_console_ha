@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Cctv, DoorOpen, Droplets, House, Pencil, PersonStanding, Plus, Search, Sparkles, Thermometer, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Battery, BatteryFull, BatteryMedium, BatteryWarning, Cctv, DoorOpen, Droplets, House, Pencil, PersonStanding, Pin, Plus, Search, Sparkles, Thermometer, Trash2, X } from 'lucide-react';
 import { CollapsibleCard } from './CollapsibleCard';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
@@ -574,6 +574,40 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
     void mutate({ ...custom, occupancy }, '有人传感器已保存');
   }
 
+  // ---- 电量传感器偏好 ----
+  function nextBattery(partial: Partial<NonNullable<CustomConfig['battery']>>) {
+    return { ...(custom!.battery ?? {}), ...partial };
+  }
+  function setBatteryEnabled(enabled: boolean) {
+    if (!custom) return;
+    void mutate({ ...custom, battery: nextBattery({ enabled }) }, enabled ? '已显示主页电池提醒' : '已隐藏主页电池提醒');
+  }
+  function excludeBattery(id: string) {
+    if (!custom) return;
+    const excluded = Array.from(new Set([...(custom.battery?.excluded ?? []), id]));
+    // 被剔除的实体不能再是常驻。
+    const highlightEntity = custom.battery?.highlightEntity === id ? undefined : custom.battery?.highlightEntity;
+    void mutate({ ...custom, battery: nextBattery({ excluded, highlightEntity }) }, '已从电池列表移除');
+  }
+  function restoreBattery(id: string) {
+    if (!custom) return;
+    const excluded = (custom.battery?.excluded ?? []).filter((item) => item !== id);
+    void mutate({ ...custom, battery: nextBattery({ excluded }) }, '已恢复到电池列表');
+  }
+  function renameBattery(id: string, name: string) {
+    if (!custom) return;
+    const names = { ...(custom.battery?.names ?? {}) };
+    const trimmed = name.trim();
+    if (trimmed) names[id] = trimmed;
+    else delete names[id];
+    void mutate({ ...custom, battery: nextBattery({ names }) }, '电池名称已更新');
+  }
+  function setHighlightBattery(id: string) {
+    if (!custom) return;
+    const current = custom.battery?.highlightEntity;
+    void mutate({ ...custom, battery: nextBattery({ highlightEntity: current === id ? undefined : id }) }, current === id ? '已取消常驻显示' : '已设为常驻显示');
+  }
+
   if (!connected) return <section className="settings-card"><p className="settings-message">连接 Home Assistant 后，可在这里手动创建房间、添加设备和设置情景模式按钮。</p></section>;
   if (!data || !custom) return <section className="settings-card"><p className="settings-message">{error ?? '正在读取房间配置与已发现的设备…'}</p></section>;
 
@@ -593,6 +627,11 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
   };
   // 可作区域“有人”判断的实体（在线 binary_sensor / sensor）。
   const occupancyCandidates = data.entities.filter(isOccupancyCandidate);
+  // 全部电量 sensor 实体（含离线，用于剔除 / 改名 / 常驻设置）。
+  const batteryEntities = data.entities.filter((entity) => entity.domain === 'sensor' && entity.deviceClass === 'battery');
+  const excludedBatteryIds = new Set(custom.battery?.excluded ?? []);
+  const visibleBatteries = batteryEntities.filter((entity) => !excludedBatteryIds.has(entity.id));
+  const excludedBatteries = batteryEntities.filter((entity) => excludedBatteryIds.has(entity.id));
   const metricSourceOf = (scope: string, metric: MetricName) => custom.metricSources?.find((item) => item.scope === scope && item.metric === metric);
   const editingScene = editingSceneId ? custom.scenes.find((scene) => scene.id === editingSceneId) ?? null : null;
   const iconPickerChoices: IconChoice[] | null = iconPicker ? (iconPicker.kind === 'room' ? ROOM_ICONS : SCENE_ICONS) : null;
@@ -688,6 +727,65 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
               ))}
             </ul>
           )}
+      </CollapsibleCard>
+
+      <CollapsibleCard icon={Battery} title="电量传感器">
+        <div className="settings-row">
+          <span>
+            <strong>主页电池提醒</strong>
+            <small style={{ display: 'block', color: 'var(--text-2)', fontSize: '12px', fontWeight: 400 }}>在首页状态栏显示“电池 N 个”药丸按钮，点击查看全部电量。</small>
+          </span>
+          <button type="button" role="switch" className="settings-switch" aria-checked={custom.battery?.enabled !== false} aria-label="主页电池提醒" onClick={() => setBatteryEnabled(custom.battery?.enabled === false)}><span /></button>
+        </div>
+
+        {batteryEntities.length === 0 ? (
+          <p className="settings-message">当前没有发现 device_class 为 battery 的 sensor 实体。</p>
+        ) : (
+          <>
+            <p className="settings-message">自动收录所有电量传感器。可手动改名、从列表剔除（不再显示在首页），或指定一个常驻显示在首页的实体。</p>
+            <ul className="battery-manage-list">
+              {visibleBatteries.map((entity) => {
+                const isHighlight = custom.battery?.highlightEntity === entity.id;
+                const displayName = custom.battery?.names?.[entity.id] ?? entity.name;
+                return (
+                  <li key={entity.id} className="battery-manage-row">
+                    <span className={`battery-manage-row__icon${isHighlight ? ' is-highlight' : ''}`}>{isHighlight ? <Pin size={15} /> : <Battery size={15} />}</span>
+                    <input
+                      type="text"
+                      className="battery-manage-row__name"
+                      value={displayName}
+                      onChange={(event) => setCustom({ ...custom, battery: nextBattery({ names: { ...(custom.battery?.names ?? {}), [entity.id]: event.target.value } }) })}
+                      onBlur={(event) => renameBattery(entity.id, event.target.value)}
+                      onKeyDown={(event) => { if (event.key === 'Enter') (event.target as HTMLInputElement).blur(); }}
+                      placeholder={entity.name}
+                      aria-label={`${entity.name} 显示名称`}
+                    />
+                    <small className="battery-manage-row__id" title={entity.id}>{entity.id}</small>
+                    <button type="button" className={`small-button${isHighlight ? ' small-button--selected' : ''}`} onClick={() => setHighlightBattery(entity.id)} disabled={!entity.available && !isHighlight}>
+                      <Pin size={13} />{isHighlight ? '取消常驻' : '设为常驻'}
+                    </button>
+                    <button type="button" className="icon-button" onClick={() => excludeBattery(entity.id)} aria-label={`从电池列表移除 ${entity.name}`} title="从首页电池列表移除"><Trash2 size={16} /></button>
+                  </li>
+                );
+              })}
+            </ul>
+            {excludedBatteries.length > 0 && (
+              <div className="battery-manage-excluded">
+                <h4>已移除（{excludedBatteries.length}）</h4>
+                <ul className="battery-manage-list">
+                  {excludedBatteries.map((entity) => (
+                    <li key={entity.id} className="battery-manage-row">
+                      <span className="battery-manage-row__icon"><Battery size={15} /></span>
+                      <span className="battery-manage-row__name">{custom.battery?.names?.[entity.id] ?? entity.name}</span>
+                      <small className="battery-manage-row__id">{entity.id}</small>
+                      <button type="button" className="small-button" onClick={() => restoreBattery(entity.id)}><Plus size={13} />恢复</button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
+        )}
       </CollapsibleCard>
 
       <CollapsibleCard icon={Sparkles} title="情景模式按钮">

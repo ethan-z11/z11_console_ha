@@ -73,6 +73,19 @@ export interface CustomConfig {
   metricSources?: MetricSource[];
   /** 区域有人传感器：scope（home / 房间 id）→ 实体 id 列表；多个为“或”，任一触发即有人。 */
   occupancy?: Record<string, string[]>;
+  /** 电量传感器显示偏好：主页药丸开关、手动剔除、改名、常驻实体。 */
+  battery?: BatteryConfig;
+}
+
+export interface BatteryConfig {
+  /** 主页“电池 N 个”药丸按钮是否显示；缺省 true。 */
+  enabled?: boolean;
+  /** 从自动收录列表中手动剔除的实体 id（不再出现在主页电池列表和弹窗里）。 */
+  excluded?: string[];
+  /** 实体 id → 自定义显示名。 */
+  names?: Record<string, string>;
+  /** 首页常驻显示的单个电池实体 id；必须是电量 sensor 实体。 */
+  highlightEntity?: string;
 }
 
 /** 温湿度显示来源：scope 为 'home'（主页）或房间 id；attribute 为 'state' 或实体属性键。 */
