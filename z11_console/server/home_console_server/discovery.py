@@ -191,9 +191,11 @@ def build_catalogue(areas: list[dict[str, Any]], devices: list[dict[str, Any]], 
             continue
         attributes = state.get("attributes") or {}
         entry = entries.get(entity_id) or {}
-        if entry.get("disabled_by") or entry.get("hidden_by") or entry.get("entity_category"):
-            continue
         device_class = attributes.get("device_class") or entry.get("device_class") or entry.get("original_device_class")
+        # 电量传感器常被 HA 标记为 diagnostic（entity_category），这里放行以便电量管理收录。
+        is_battery_sensor = domain == "sensor" and device_class == "battery"
+        if entry.get("disabled_by") or entry.get("hidden_by") or (entry.get("entity_category") and not is_battery_sensor):
+            continue
         friendly = str(attributes.get("friendly_name") or entry.get("name") or entry.get("original_name") or entity_id)
         lunar = is_lunar_entity(domain, entity_id, friendly)
         device_name = device_names.get(entry.get("device_id"), "")
