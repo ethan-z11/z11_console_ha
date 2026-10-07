@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Battery, BatteryFull, BatteryMedium, BatteryWarning, Cctv, DoorOpen, Droplets, House, Pencil, PersonStanding, Pin, Plus, Search, Sparkles, Thermometer, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Battery, Cctv, DoorOpen, Droplets, House, Pencil, PersonStanding, Pin, Plus, Search, Sparkles, Thermometer, Trash2, X } from 'lucide-react';
 import { CollapsibleCard } from './CollapsibleCard';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
