@@ -1319,6 +1319,7 @@ html, body { overscroll-behavior-y: none; }
 .battery-manage-row__id { flex: 0 1 160px; min-width: 0; overflow: hidden; color: var(--text-3); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
 .battery-manage-excluded { margin-top: 14px; }
 .battery-manage-excluded h4 { margin: 0 0 8px; color: var(--text-3); font-size: 12.5px; font-weight: 500; }
+.battery-manage-add { display: flex; align-items: center; gap: 12px; margin: 12px 0 4px; flex-wrap: wrap; }
 
 /* ---------- 设置 → 温湿度来源 ---------- */
 .metric-source-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }

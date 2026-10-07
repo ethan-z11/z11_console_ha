@@ -168,6 +168,78 @@ function OccupancyPicker({ scopeName, candidates, current, onSave, onClose }: {
   );
 }
 
+/** 手动添加电池实体：从全部实体中多选，已在电池列表里的排除。 */
+function BatteryAddPicker({ candidates, current, onSave, onClose }: {
+  candidates: CatalogueEntity[];
+  current: string[];
+  onSave: (entityIds: string[]) => void;
+  onClose: () => void;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const pickerId = useId();
+  const [query, setQuery] = useState('');
+  const existing = new Set(current);
+  const [picked, setPicked] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) dialog.showModal();
+  }, []);
+  const close = () => dialogRef.current?.close();
+  const handleKey = (event: KeyboardEvent<HTMLDialogElement>) => { if (event.key === 'Escape') event.preventDefault(); };
+
+  const keyword = query.trim().toLowerCase();
+  const matches = candidates
+    .filter((entity) => !existing.has(entity.id))
+    .filter((entity) => !keyword || entity.name.toLowerCase().includes(keyword) || entity.id.toLowerCase().includes(keyword))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const toggle = (id: string) => {
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  return (
+    <dialog ref={dialogRef} className="device-dialog customize-dialog" aria-labelledby={`${pickerId}-title`} onKeyDown={handleKey} onClose={onClose} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="device-dialog__heading">
+        <div><small>电量传感器</small><h2 id={`${pickerId}-title`}>手动添加电池实体</h2></div>
+        <button type="button" className="icon-button" onClick={close} aria-label="完成"><X size={20} /></button>
+      </div>
+      <div className="customize-dialog__body">
+        <p className="settings-message">自动没识别出来的电量实体可在这里手动添加，支持多选。实体状态值必须是数字（0–100）才会显示电量。</p>
+        <div className="entity-filter__tools">
+          <label className="entity-filter__search" htmlFor={`${pickerId}-q`}>
+            <Search size={16} />
+            <input id={`${pickerId}-q`} type="search" placeholder="搜索名称或实体 ID" value={query} onChange={(event) => setQuery(event.target.value)} />
+          </label>
+        </div>
+        {matches.length === 0 ? <p className="settings-message">没有可添加的实体</p> : (
+          <section className="entity-filter__group">
+            <h4>全部实体<em>{matches.length}</em></h4>
+            <ul>
+              {matches.map((entity) => (
+                <li key={entity.id}>
+                  <label>
+                    <input type="checkbox" checked={picked.has(entity.id)} onChange={() => toggle(entity.id)} />
+                    <span className="entity-filter__name">{entity.name}{entity.deviceClass && <em className="entity-filter__class">{entityKindLabel(entity)}</em>}</span>
+                    <code>{entity.id}</code>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
+      <div className="customize-dialog__footer">
+        <span className="settings-message">已选 {picked.size} 个</span>
+        <button type="button" className="small-button small-button--selected" onClick={() => onSave(Array.from(picked))}>添加</button>
+      </div>
+    </dialog>
+  );
+}
+
 /** 温湿度来源一行：按钮打开勾选弹窗；已选时显示实体与参数，可更换或删除。 */
 function MetricSourceRow({ metric, label, icon, source, candidates, scopeName, onPick, onClear }: {
   metric: MetricName;
@@ -327,6 +399,7 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
   const [iconPicker, setIconPicker] = useState<IconPickerState>(null);
   const [editingSceneId, setEditingSceneId] = useState<string | null>(null);
   const [editingEntity, setEditingEntity] = useState<CatalogueEntity | null>(null);
+  const [batteryAddOpen, setBatteryAddOpen] = useState(false);
 
   useEffect(() => {
     if (!connected) return;
@@ -584,15 +657,24 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
   }
   function excludeBattery(id: string) {
     if (!custom) return;
-    const excluded = Array.from(new Set([...(custom.battery?.excluded ?? []), id]));
-    // 被剔除的实体不能再是常驻。
+    const isAdded = (custom.battery?.added ?? []).includes(id);
+    // 手动添加的：从 added 删除；自动发现的：加进 excluded。
+    const added = isAdded ? (custom.battery?.added ?? []).filter((item) => item !== id) : custom.battery?.added;
+    const excluded = isAdded ? custom.battery?.excluded : Array.from(new Set([...(custom.battery?.excluded ?? []), id]));
+    // 被移除的实体不能再是常驻。
     const highlightEntity = custom.battery?.highlightEntity === id ? undefined : custom.battery?.highlightEntity;
-    void mutate({ ...custom, battery: nextBattery({ excluded, highlightEntity }) }, '已从电池列表移除');
+    void mutate({ ...custom, battery: nextBattery({ excluded, added, highlightEntity }) }, isAdded ? '已删除手动添加的电池' : '已从电池列表移除');
   }
   function restoreBattery(id: string) {
     if (!custom) return;
     const excluded = (custom.battery?.excluded ?? []).filter((item) => item !== id);
     void mutate({ ...custom, battery: nextBattery({ excluded }) }, '已恢复到电池列表');
+  }
+  function addBatteries(ids: string[]) {
+    if (!custom) return;
+    const existing = new Set([...(custom.battery?.added ?? []), ...batteryEntities.map((e) => e.id)]);
+    const added = Array.from(new Set([...(custom.battery?.added ?? []), ...ids.filter((id) => !existing.has(id))]));
+    void mutate({ ...custom, battery: nextBattery({ added }) }, ids.length > 0 ? `已添加 ${ids.length} 个电池` : '未添加新电池');
   }
   function renameBattery(id: string, name: string) {
     if (!custom) return;
@@ -627,11 +709,17 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
   };
   // 可作区域“有人”判断的实体（在线 binary_sensor / sensor）。
   const occupancyCandidates = data.entities.filter(isOccupancyCandidate);
-  // 全部电量 sensor 实体（含离线，用于剔除 / 改名 / 常驻设置）。
-  const batteryEntities = data.entities.filter((entity) => entity.domain === 'sensor' && entity.deviceClass === 'battery');
+  // 全部电量实体：自动发现的 device_class=battery sensor + 手动添加的（added）。
+  const addedBatteryIds = new Set(custom.battery?.added ?? []);
+  const batteryEntities = data.entities.filter((entity) =>
+    (entity.domain === 'sensor' && entity.deviceClass === 'battery') || addedBatteryIds.has(entity.id),
+  );
   const excludedBatteryIds = new Set(custom.battery?.excluded ?? []);
   const visibleBatteries = batteryEntities.filter((entity) => !excludedBatteryIds.has(entity.id));
-  const excludedBatteries = batteryEntities.filter((entity) => excludedBatteryIds.has(entity.id));
+  // “已移除”只展示自动发现后被剔除的；手动添加的删除就是从 added 里去掉，不再出现在列表。
+  const excludedBatteries = batteryEntities.filter((entity) =>
+    entity.domain === 'sensor' && entity.deviceClass === 'battery' && excludedBatteryIds.has(entity.id),
+  );
   const metricSourceOf = (scope: string, metric: MetricName) => custom.metricSources?.find((item) => item.scope === scope && item.metric === metric);
   const editingScene = editingSceneId ? custom.scenes.find((scene) => scene.id === editingSceneId) ?? null : null;
   const iconPickerChoices: IconChoice[] | null = iconPicker ? (iconPicker.kind === 'room' ? ROOM_ICONS : SCENE_ICONS) : null;
@@ -738,11 +826,16 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
           <button type="button" role="switch" className="settings-switch" aria-checked={custom.battery?.enabled !== false} aria-label="主页电池提醒" onClick={() => setBatteryEnabled(custom.battery?.enabled === false)}><span /></button>
         </div>
 
+        <div className="battery-manage-add">
+          <button type="button" className="small-button small-button--selected" onClick={() => setBatteryAddOpen(true)}><Plus size={14} />手动添加电池实体</button>
+          <small className="settings-message">自动收录 device_class 为 battery 的传感器；自动没识别出来的可在这里手动添加。</small>
+        </div>
+
         {batteryEntities.length === 0 ? (
-          <p className="settings-message">当前没有发现 device_class 为 battery 的 sensor 实体。</p>
+          <p className="settings-message">暂无电池实体，点击上方按钮手动添加。</p>
         ) : (
           <>
-            <p className="settings-message">自动收录所有电量传感器。可手动改名、从列表剔除（不再显示在首页），或指定一个常驻显示在首页的实体。</p>
+            <p className="settings-message">可手动改名、从列表移除（自动收录的可恢复，手动添加的直接删除），或指定一个常驻显示在首页的实体。</p>
             <ul className="battery-manage-list">
               {visibleBatteries.map((entity) => {
                 const isHighlight = custom.battery?.highlightEntity === entity.id;
@@ -785,6 +878,14 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
               </div>
             )}
           </>
+        )}
+        {batteryAddOpen && (
+          <BatteryAddPicker
+            candidates={data.entities}
+            current={batteryEntities.map((e) => e.id)}
+            onSave={(ids) => { addBatteries(ids); setBatteryAddOpen(false); }}
+            onClose={() => setBatteryAddOpen(false)}
+          />
         )}
       </CollapsibleCard>
 

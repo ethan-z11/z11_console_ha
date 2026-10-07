@@ -376,8 +376,10 @@ export function liveHome(catalogue: Catalogue | null, states: States, previous: 
     // 一键执行类实体（scene/script/button/input_button/automation）不是房间设备，由情景模式按钮使用。
     if (SCENE_TARGET_DOMAINS.has(entity.domain)) continue;
     // 电量传感器不做房间筛选：无论是否分配房间都收录，已分配的记各自房间（房间摘要低电提醒），未分配的记 'home'（主页电量提醒）。
-    // 设置里可手动剔除（excluded）、改名（names）、指定首页常驻显示（highlightEntity）。
-    if (entity.domain === 'sensor' && entity.deviceClass === 'battery') {
+    // 设置里可手动剔除（excluded）、手动添加（added）、改名（names）、指定首页常驻显示（highlightEntity）。
+    const addedSet = new Set(custom.battery?.added ?? []);
+    const isAutoBattery = entity.domain === 'sensor' && entity.deviceClass === 'battery';
+    if (isAutoBattery || addedSet.has(entity.id)) {
       const excluded = custom.battery?.excluded;
       if (excluded?.includes(entity.id)) continue;
       const level = usable(state) ? Number(state.state) : NaN;

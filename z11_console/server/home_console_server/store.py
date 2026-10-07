@@ -297,12 +297,27 @@ def clean_custom(raw: Any, known_rooms: set[str] | None = None, known_entities: 
         if picked:
             occupancy[scope] = picked
 
-    # 电量传感器偏好：主页药丸开关、手动剔除列表、自定义名称、首页常驻实体。
-    # enabled 缺省为 True；excluded / highlightEntity 只允许电量 sensor 实体（已知时校验）。
+    # 电量传感器偏好：主页药丸开关、手动剔除列表、手动添加列表、自定义名称、首页常驻实体。
+    # enabled 缺省为 True；
+    # excluded 只允许电量 sensor（自动收录的），手动添加的实体移除走 added 删除；
+    # added 允许任意已发现实体；names / highlightEntity 允许电量 sensor 或 added 实体。
     battery_raw = raw.get("battery") if isinstance(raw.get("battery"), dict) else {}
     enabled = battery_raw.get("enabled", True)
     if not isinstance(enabled, bool):
         enabled = True
+    # 手动添加：任意已发现实体，去重，最多 200 个。
+    added_raw = battery_raw.get("added") if isinstance(battery_raw.get("added"), list) else []
+    added: list[str] = []
+    for entity_id in added_raw[:200]:
+        if not isinstance(entity_id, str) or not ENTITY_ID_RE.fullmatch(entity_id) or entity_id in added:
+            continue
+        if known_entities is not None and entity_id not in known_entities:
+            continue
+        added.append(entity_id)
+    added_set = set(added)
+    # 允许命名 / 常驻的实体集合：电量 sensor + 手动添加的。
+    allowed_battery_ids = (known_battery_entities or set()) | added_set
+    # 剔除：只对自动收录的电量 sensor 有效。
     excluded_raw = battery_raw.get("excluded") if isinstance(battery_raw.get("excluded"), list) else []
     excluded: list[str] = []
     for entity_id in excluded_raw[:200]:
@@ -310,20 +325,24 @@ def clean_custom(raw: Any, known_rooms: set[str] | None = None, known_entities: 
             continue
         if known_battery_entities is not None and entity_id not in known_battery_entities:
             continue
+        if entity_id in added_set:
+            continue
         excluded.append(entity_id)
     names = _battery_names(battery_raw.get("names"))
-    if known_battery_entities is not None:
-        names = {entity_id: name for entity_id, name in names.items() if entity_id in known_battery_entities}
+    if allowed_battery_ids:
+        names = {entity_id: name for entity_id, name in names.items() if entity_id in allowed_battery_ids}
     highlight = battery_raw.get("highlightEntity")
     if not isinstance(highlight, str) or not ENTITY_ID_RE.fullmatch(highlight):
         highlight = None
-    elif known_battery_entities is not None and highlight not in known_battery_entities:
+    elif allowed_battery_ids and highlight not in allowed_battery_ids:
         highlight = None
     elif highlight in excluded:
         highlight = None
     battery: dict[str, Any] = {"enabled": enabled}
     if excluded:
         battery["excluded"] = excluded
+    if added:
+        battery["added"] = added
     if names:
         battery["names"] = names
     if highlight:

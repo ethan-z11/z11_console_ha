@@ -82,6 +82,8 @@ export interface BatteryConfig {
   enabled?: boolean;
   /** 从自动收录列表中手动剔除的实体 id（不再出现在主页电池列表和弹窗里）。 */
   excluded?: string[];
+  /** 手动添加的实体 id（自动没识别出来的电量实体，可多个）。 */
+  added?: string[];
   /** 实体 id → 自定义显示名。 */
   names?: Record<string, string>;
   /** 首页常驻显示的单个电池实体 id；必须是电量 sensor 实体。 */
