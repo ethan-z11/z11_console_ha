@@ -130,7 +130,7 @@ function OccupancyPicker({ scopeName, candidates, current, onSave, onClose }: {
   };
 
   return (
-    <dialog ref={dialogRef} className="device-dialog customize-dialog" aria-labelledby={`${pickerSearchId}-title`} onKeyDown={handleKey} onClose={onClose}>
+    <dialog ref={dialogRef} className="device-dialog customize-dialog" aria-labelledby={`${pickerSearchId}-title`} onKeyDown={handleKey} onClose={onClose} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="device-dialog__heading">
         <div><small>{scopeName}</small><h2 id={`${pickerSearchId}-title`}>选择有人传感器</h2></div>
         <button type="button" className="icon-button" onClick={close} aria-label="完成"><X size={20} /></button>
@@ -239,7 +239,7 @@ function MetricPicker({ metric, label, scopeName, candidates, current, onSave, o
   };
 
   return (
-    <dialog ref={dialogRef} className="device-dialog customize-dialog" aria-labelledby={`${pickerSearchId}-title`} onKeyDown={handleKey} onClose={onClose}>
+    <dialog ref={dialogRef} className="device-dialog customize-dialog" aria-labelledby={`${pickerSearchId}-title`} onKeyDown={handleKey} onClose={onClose} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="device-dialog__heading">
         <div><small>{scopeName}</small><h2 id={`${pickerSearchId}-title`}>选择{label}来源</h2></div>
         <button type="button" className="icon-button" onClick={close} aria-label="完成"><X size={20} /></button>
@@ -944,7 +944,7 @@ function IconPicker({ title, choices, includeAuto, value, onPick, onClose, pages
   const firstPage = [autoChoice, ...choices.filter((choice) => choice.key !== '')];
   const shown = page === 0 ? firstPage : pages?.[page - 1]?.choices ?? firstPage;
   return (
-    <dialog ref={dialogRef} className="device-dialog icon-picker-dialog" onClose={onClose}>
+    <dialog ref={dialogRef} className="device-dialog icon-picker-dialog" onClose={onClose} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="device-dialog__heading">
         <div><small>自定义</small><h2>{title}</h2></div>
         <button type="button" className="icon-button" onClick={() => dialogRef.current?.close()} aria-label="关闭"><X size={20} /></button>
@@ -998,7 +998,7 @@ function SceneEditDialog({ scene, data, targetGroups, unlabeledTargets, entityNa
   const known = new Set(data.entities.map((entity) => entity.id));
 
   return (
-    <dialog ref={dialogRef} className="device-dialog customize-dialog scene-edit-dialog" onClose={onClose}>
+    <dialog ref={dialogRef} className="device-dialog customize-dialog scene-edit-dialog" onClose={onClose} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="device-dialog__heading">
         <div><small>情景按钮</small><h2>编辑情景</h2></div>
         <button type="button" className="icon-button" onClick={() => dialogRef.current?.close()} aria-label="取消"><X size={20} /></button>
@@ -1069,7 +1069,7 @@ function DeviceEditDialog({ entity, override, onClose, onSave }: {
 
   const Icon = findAnyIcon(icon);
   return (
-    <dialog ref={dialogRef} className="device-dialog customize-dialog scene-edit-dialog" onClose={onClose}>
+    <dialog ref={dialogRef} className="device-dialog customize-dialog scene-edit-dialog" onClose={onClose} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="device-dialog__heading">
         <div><small>{entityKindLabel(entity)} · {entity.id}</small><h2>自定义设备</h2></div>
         <button type="button" className="icon-button" onClick={() => dialogRef.current?.close()} aria-label="取消"><X size={20} /></button>
@@ -1155,7 +1155,7 @@ function DevicePicker({ room, data, custom, searchId, onToggle, onEdit, onClose 
   }
 
   return (
-    <dialog ref={dialogRef} className="device-dialog customize-dialog" aria-labelledby="device-picker-title" onKeyDown={handleKey} onClose={onClose}>
+    <dialog ref={dialogRef} className="device-dialog customize-dialog" aria-labelledby="device-picker-title" onKeyDown={handleKey} onClose={onClose} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="device-dialog__heading">
         <div><small>{room.name}</small><h2 id="device-picker-title">添加设备</h2></div>
         <button type="button" className="icon-button" onClick={close} aria-label="完成"><X size={20} /></button>

@@ -25,7 +25,7 @@ export function ClimateDialog({ climate, room, actions, onClose }: ClimateDialog
   }, [open]);
 
   return (
-    <dialog ref={dialogRef} className={`device-dialog${climate ? ` climate-card--${climateTone(climate)}` : ''}`} onClose={() => { onClose(); releasePointerFocus(); }} onCancel={onClose}>
+    <dialog ref={dialogRef} className={`device-dialog${climate ? ` climate-card--${climateTone(climate)}` : ''}`} onClose={() => { onClose(); releasePointerFocus(); }} onCancel={onClose} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       {climate && <>
         <div className="device-dialog__heading">
           <div><small>{room?.name}</small><h2>{climate.name}</h2></div>

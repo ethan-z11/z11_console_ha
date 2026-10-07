@@ -107,7 +107,7 @@ export function VacuumCard({ layout, vacuum, room, onToggle, onStart, onPause, o
         {!editing && <button type="button" className="light-card__settings" onClick={() => setDetailOpen(true)} disabled={!vacuum.available} aria-label={`设置${room.name}${vacuum.name}清扫、回充和档位`} aria-haspopup="dialog" aria-controls={detailOpen ? detailId : undefined}><SlidersHorizontal size={18} /></button>}
       </div>}
     </TileFrame>
-    {compact && detailOpen && createPortal(<dialog ref={detailRef} id={detailId} className="light-detail-dialog" aria-labelledby={`${detailId}-title`} onClose={() => { setDetailOpen(false); releasePointerFocus(); }} onCancel={() => setDetailOpen(false)}>
+    {compact && detailOpen && createPortal(<dialog ref={detailRef} id={detailId} className="light-detail-dialog" aria-labelledby={`${detailId}-title`} onClose={() => { setDetailOpen(false); releasePointerFocus(); }} onCancel={() => setDetailOpen(false)} onClick={(e) => { if (e.target === e.currentTarget) setDetailOpen(false); }}>
       <div className="light-detail-dialog__heading"><div><small>{room.name}</small><h2 id={`${detailId}-title`}>{vacuum.name}</h2></div><button type="button" onClick={() => setDetailOpen(false)} autoFocus aria-label="关闭扫地机设置"><X size={20} /></button></div>
       <div className="vacuum-card__dialog">
         <div className="vacuum-card__map vacuum-card__map--dialog">

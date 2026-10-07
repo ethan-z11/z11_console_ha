@@ -74,7 +74,7 @@ export function ActiveDevicesDialog({ request, home, actions, canControl, onClos
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request]);
 
-  if (!request) return <dialog ref={dialogRef} className="device-dialog active-dialog" onClose={() => { onClose(); releasePointerFocus(); }} onCancel={onClose} />;
+  if (!request) return <dialog ref={dialogRef} className="device-dialog active-dialog" onClose={() => { onClose(); releasePointerFocus(); }} onCancel={onClose} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} />;
 
   const { on: title, noun, icon: KindIcon } = titles[request.kind];
   const listed = ids.map((id) => home.devices.find((device) => device.id === id)).filter((device): device is Device => Boolean(device));
@@ -87,7 +87,7 @@ export function ActiveDevicesDialog({ request, home, actions, canControl, onClos
   if (ungrouped.length > 0) groups.push({ room: { id: '', name: '其他', category: 'other' }, devices: ungrouped });
 
   return (
-    <dialog ref={dialogRef} className="device-dialog active-dialog" aria-label={title} onClose={() => { onClose(); releasePointerFocus(); }} onCancel={onClose}>
+    <dialog ref={dialogRef} className="device-dialog active-dialog" aria-label={title} onClose={() => { onClose(); releasePointerFocus(); }} onCancel={onClose} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="device-dialog__heading">
         <div><small>{scopeRoom?.name ?? '全部房间'}</small><h2>{title}<em>{stillOn.length}</em></h2></div>
         <button type="button" className="icon-button" onClick={onClose} aria-label="关闭列表"><X size={20} /></button>

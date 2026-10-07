@@ -46,7 +46,7 @@ export function AlmanacDialog({ open, almanac, onClose }: { open: boolean; alman
   const flyTone: Record<string, string> = { '白': 'almanac-fly--bai', '黑': 'almanac-fly--hei', '碧': 'almanac-fly--bi', '绿': 'almanac-fly--lv', '黄': 'almanac-fly--huang', '赤': 'almanac-fly--chi', '紫': 'almanac-fly--zi' };
 
   return (
-    <dialog ref={dialogRef} className="device-dialog almanac-dialog" aria-label="农历老黄历" onClose={() => { onClose(); releasePointerFocus(); }} onCancel={onClose}>
+    <dialog ref={dialogRef} className="device-dialog almanac-dialog" aria-label="农历老黄历" onClose={() => { onClose(); releasePointerFocus(); }} onCancel={onClose} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       {open && almanac && <>
         <div className="device-dialog__heading">
           <div><small>中国老黄历</small><h2>农历</h2></div>

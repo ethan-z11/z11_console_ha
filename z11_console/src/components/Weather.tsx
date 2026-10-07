@@ -162,7 +162,7 @@ export function WeatherDialog({ open, weather, now, onClose }: { open: boolean; 
   }, [open]);
 
   return (
-    <dialog ref={dialogRef} className="device-dialog weather-dialog" aria-label="天气" onClose={() => { onClose(); releasePointerFocus(); }} onCancel={onClose}>
+    <dialog ref={dialogRef} className="device-dialog weather-dialog" aria-label="天气" onClose={() => { onClose(); releasePointerFocus(); }} onCancel={onClose} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       {open && <>
         <div className="device-dialog__heading">
           <div><small>中国天气网</small><h2>天气</h2></div>

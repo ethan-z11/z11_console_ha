@@ -47,7 +47,7 @@ export function RoomOrderDialog({ open, rooms, onChange, onClose }: RoomOrderDia
   }
 
   return (
-    <dialog ref={dialogRef} className="device-dialog room-order-dialog" aria-labelledby="room-order-title" onClose={() => { onClose(); releasePointerFocus(); }} onCancel={onClose}>
+    <dialog ref={dialogRef} className="device-dialog room-order-dialog" aria-labelledby="room-order-title" onClose={() => { onClose(); releasePointerFocus(); }} onCancel={onClose} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       {open && <>
         <div className="device-dialog__heading">
           <div><small>导航</small><h2 id="room-order-title">房间排序</h2></div>
