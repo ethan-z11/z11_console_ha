@@ -375,14 +375,16 @@ export function liveHome(catalogue: Catalogue | null, states: States, previous: 
     }
     // 一键执行类实体（scene/script/button/input_button/automation）不是房间设备，由情景模式按钮使用。
     if (SCENE_TARGET_DOMAINS.has(entity.domain)) continue;
+    // 电量传感器不做房间筛选：无论是否分配房间都收录，已分配的记各自房间（房间摘要低电提醒），未分配的记 'home'（主页电量提醒）。
+    if (entity.domain === 'sensor' && entity.deviceClass === 'battery') {
+      const level = usable(state) ? Number(state.state) : NaN;
+      const batteryRoom = custom.assignments[entity.id];
+      batteries.push({ id: entity.id, roomId: batteryRoom && roomIds.has(batteryRoom) ? batteryRoom : 'home', name: entity.name, available: usable(state), level: Number.isFinite(level) ? Math.round(level) : null });
+      continue;
+    }
     // 完全手动房间：未加入任何（仍存在的）房间的实体一律不显示，包括农历这类全局文本实体。
     const roomId = custom.assignments[entity.id];
     if (!roomId || !roomIds.has(roomId)) continue;
-    if (entity.domain === 'sensor' && entity.deviceClass === 'battery') {
-      const level = usable(state) ? Number(state.state) : NaN;
-      batteries.push({ id: entity.id, roomId, name: entity.name, available: usable(state), level: Number.isFinite(level) ? Math.round(level) : null });
-      continue;
-    }
     // 已为该房间手动指定温湿度来源时，原来的同指标独立传感器被替代。
     if (replacedSensorIds.has(entity.id)) continue;
     const base = baseDevice(entity, roomId, state);

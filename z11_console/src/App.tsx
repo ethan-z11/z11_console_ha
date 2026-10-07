@@ -4,6 +4,7 @@ import { Eye, Maximize, Minimize, Pencil, PersonStanding, Snowflake, Sun, Power,
 import { AdaptiveGrid } from './components/AdaptiveGrid';
 import { ActiveDevicesDialog } from './components/ActiveDevicesDialog';
 import type { ActiveListRequest } from './components/ActiveDevicesDialog';
+import { BatteryDialog } from './components/BatteryDialog';
 import { ClimateDialog } from './components/ClimateDialog';
 import { ConnectionBadge } from './components/ConnectionBadge';
 import { DeviceCard, EmptyRoomCard } from './components/DeviceCards';
@@ -129,6 +130,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
   const [weatherOpen, setWeatherOpen] = useState(false);
   const [almanacOpen, setAlmanacOpen] = useState(false);
   const [activeList, setActiveList] = useState<ActiveListRequest | null>(null);
+  const [batteryOpen, setBatteryOpen] = useState(false);
   // “正在运行”的全部关闭需要二次确认：第一次点击进入确认状态，3 秒内再点才执行。
   const [confirmAllOff, setConfirmAllOff] = useState(false);
   useEffect(() => {
@@ -468,7 +470,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
               {page === 'home' && <WeatherCompact weather={weather} onOpen={() => setWeatherOpen(true)} />}
             </div>
             {page === 'room' && <RoomStatusSummary home={home} roomId={selectedRoom.id} onOpen={setActiveList} />}
-            {page === 'home' && <HomeStatusSummary home={home} onOpen={setActiveList} />}
+            {page === 'home' && <HomeStatusSummary home={home} onOpen={setActiveList} onOpenBattery={() => setBatteryOpen(true)} />}
           </div>
         </div>
         {page === 'home' && <WeatherHero weather={weather} now={now} onOpen={() => setWeatherOpen(true)} />}
@@ -528,6 +530,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
       <RoomOrderDialog open={roomOrderOpen && canControl} rooms={home.rooms} onChange={changeRoomOrder} onClose={() => setRoomOrderOpen(false)} />
       {toast && <div className="toast" role="alert" onClick={() => { clearNotice(); setAppNotice(null); }}>{toast}</div>}
       <ActiveDevicesDialog request={activeList} home={home} actions={actions} canControl={canControl} onClose={() => setActiveList(null)} />
+      {batteryOpen && <BatteryDialog batteries={home.batteries} home={home} onClose={() => setBatteryOpen(false)} />}
       <WeatherDialog open={weatherOpen} weather={weather} now={now} onClose={() => setWeatherOpen(false)} />
       <AlmanacDialog open={almanacOpen} almanac={almanac} onClose={() => setAlmanacOpen(false)} />
       <ClimateDialog climate={selectedClimate} room={selectedClimate && roomOf(selectedClimate)} actions={actions} onClose={() => setSelectedClimateId(null)} />

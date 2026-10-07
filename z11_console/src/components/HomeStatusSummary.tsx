@@ -1,10 +1,12 @@
-import { DoorOpen, Droplets, Fan, Lightbulb, ShieldAlert, Thermometer, UsersRound, Waves, Wind } from 'lucide-react';
+import { BatteryWarning, DoorOpen, Droplets, Fan, Lightbulb, ShieldAlert, Thermometer, UsersRound, Waves, Wind } from 'lucide-react';
 import { isActiveAlert, isLit, isOpenDoor } from '../selectors';
 import type { HomeState } from '../types';
 import type { ActiveListRequest } from './ActiveDevicesDialog';
 
-/** onOpen：点亮灯、空调、地暖标签打开对应列表（可一键关闭）。 */
-export function HomeStatusSummary({ home, onOpen }: { home: HomeState; onOpen: (request: ActiveListRequest) => void }) {
+const lowBatteryThreshold = 20;
+
+/** onOpen：点亮灯、空调、地暖标签打开对应列表（可一键关闭）。onOpenBattery：打开电池状态列表。 */
+export function HomeStatusSummary({ home, onOpen, onOpenBattery }: { home: HomeState; onOpen: (request: ActiveListRequest) => void; onOpenBattery: () => void }) {
   const alerts = home.devices.filter(isActiveAlert).length;
   const openDoors = home.devices.filter(isOpenDoor);
   const peopleHome = home.people.filter((person) => person.status === 'home');
@@ -15,6 +17,12 @@ export function HomeStatusSummary({ home, onOpen }: { home: HomeState; onOpen: (
   // 设置里“指向主页”的温湿度来源（scope = home），与房间状态摘要同样的药丸样式。
   const temperature = home.devices.find((device) => device.roomId === 'home' && device.kind === 'sensor' && device.metric === 'temperature');
   const humidity = home.devices.find((device) => device.roomId === 'home' && device.kind === 'sensor' && device.metric === 'humidity');
+
+  // 电量提醒：所有 battery 实体（含未分配房间的），低电/未知时警示色，否则正常色。
+  const batteries = home.batteries;
+  const lowCount = batteries.filter((b) => b.available && b.level !== null && b.level <= lowBatteryThreshold).length;
+  const unknownCount = batteries.filter((b) => !b.available || b.level === null).length;
+  const batteryTone = lowCount > 0 || unknownCount > 0 ? ' status-pill--warning' : '';
 
   return (
     <div className="status-row" aria-label="家庭状态">
@@ -27,6 +35,11 @@ export function HomeStatusSummary({ home, onOpen }: { home: HomeState; onOpen: (
       {openDoors.length > 0 && <span className="status-pill"><DoorOpen size={15} />{openDoors.length <= 2 ? `${openDoors.map((device) => device.name).join('、')}已打开` : `${openDoors.length} 处门窗打开`}</span>}
       {runningFloorHeatings > 0 && <button type="button" className="status-pill status-pill--heat status-pill--button" onClick={() => onOpen({ kind: 'heating' })}><Waves size={15} />{runningFloorHeatings} 处制热已开启</button>}
       {runningFans > 0 && <button type="button" className="status-pill status-pill--cool status-pill--button" onClick={() => onOpen({ kind: 'fan' })}><Fan size={15} />{runningFans} 台风扇开启</button>}
+      {batteries.length > 0 && (
+        <button type="button" className={`status-pill status-pill--button${batteryTone}`} onClick={onOpenBattery}>
+          <BatteryWarning size={15} />电池 {batteries.length} 个{lowCount > 0 ? `（${lowCount} 低电）` : unknownCount > 0 ? `（${unknownCount} 未知）` : ''}
+        </button>
+      )}
     </div>
   );
 }

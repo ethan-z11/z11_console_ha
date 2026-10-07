@@ -1253,6 +1253,22 @@ html, body { overscroll-behavior-y: none; }
 .active-dialog__all-off:disabled { border-color: var(--hairline); background: var(--surface-2); color: var(--text-3); cursor: default; }
 .active-dialog__empty { margin: 8px 0 0; color: var(--text-3); font-size: 13px; }
 
+/* ---------- 电池状态弹窗（主页电池提醒点击打开） ---------- */
+.battery-dialog__list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.battery-dialog__item { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 12px 8px 10px; border: 1px solid var(--hairline); border-radius: var(--radius-sm); background: var(--surface); }
+.battery-dialog__icon { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 11px; background: var(--surface-2); color: var(--text-3); }
+.battery-dialog__name { flex: 1; min-width: 0; }
+.battery-dialog__name strong { display: block; overflow: hidden; font-size: 15px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.battery-dialog__name small { display: block; margin-top: 2px; color: var(--text-2); font-size: 12px; }
+.battery-dialog__level { flex: none; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-2); }
+/* 图标与电量颜色按百分比区分：≤20 红、21–40 黄、41–70 默认、>70 绿；未知按低电红色处理 */
+.battery-dialog__item.battery-item--alert .battery-dialog__icon { background: color-mix(in srgb, var(--alert) 18%, transparent); color: var(--alert); }
+.battery-dialog__item.battery-item--alert .battery-dialog__level { color: var(--alert); }
+.battery-dialog__item.battery-item--warning .battery-dialog__icon { background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--warning); }
+.battery-dialog__item.battery-item--warning .battery-dialog__level { color: var(--warning); }
+.battery-dialog__item.battery-item--ok .battery-dialog__icon { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+.battery-dialog__item.battery-item--ok .battery-dialog__level { color: var(--good); }
+
 /* ---------- 情景模式板块（首页常用设备上方 / 房间页顶部） ---------- */
 .scene-board { margin-bottom: 26px; }
 .scene-board .section-heading { margin-bottom: 10px; }
