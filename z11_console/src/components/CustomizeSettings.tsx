@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Battery, Cctv, DoorOpen, Droplets, House, Pencil, PersonStanding, Pin, Plus, Search, Sparkles, Thermometer, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Battery, Cctv, DoorOpen, Droplets, House, Pencil, PersonStanding, Pin, Plus, Search, Sparkles, Thermometer, Trash2, X, ZoomIn } from 'lucide-react';
 import { CollapsibleCard } from './CollapsibleCard';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
@@ -24,6 +24,14 @@ function describeCamera(camera: CustomConfig['cameras'][number]): string {
 }
 
 const ONVIF_HOST_RE = /^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,126}[A-Za-z0-9])?$/;
+
+/** 主页缩放偏好保存在本机（localStorage），只影响当前屏幕，不进服务端配置。 */
+const SCALE_KEY_TIME = 'z11.scale.time';
+const SCALE_KEY_WEATHER = 'z11.scale.weather';
+function writeScale(kind: 'time' | 'weather', value: number) {
+  localStorage.setItem(kind === 'time' ? SCALE_KEY_TIME : SCALE_KEY_WEATHER, String(value));
+  document.documentElement.style.setProperty(kind === 'time' ? '--time-scale' : '--weather-scale', String(value));
+}
 
 interface CustomizeSettingsProps {
   /** HA 已连接时才能读取发现结果与保存配置。 */
@@ -647,6 +655,10 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
     void mutate({ ...custom, occupancy }, '有人传感器已保存');
   }
 
+  // ---- 主页显示缩放（本机生效） ----
+  const [timeScale, setTimeScale] = useState(() => Number(localStorage.getItem(SCALE_KEY_TIME)) || 1);
+  const [weatherScale, setWeatherScale] = useState(() => Number(localStorage.getItem(SCALE_KEY_WEATHER)) || 1);
+
   // ---- 电量传感器偏好 ----
   function nextBattery(partial: Partial<NonNullable<CustomConfig['battery']>>) {
     return { ...(custom!.battery ?? {}), ...partial };
@@ -815,6 +827,27 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
               ))}
             </ul>
           )}
+      </CollapsibleCard>
+
+      <CollapsibleCard icon={ZoomIn} title="主页显示">
+        <p className="settings-message">调整首页时间与天气卡片的大小，仅对当前这块屏幕生效（保存在本机）。</p>
+        <div className="settings-row">
+          <span><strong>时间缩放</strong><small style={{ display: 'block', color: 'var(--text-2)', fontSize: '12px', fontWeight: 400 }}>首页大时钟的显示倍率。</small></span>
+          <span className="scale-slider">
+            <input type="range" min="0.7" max="2" step="0.05" value={timeScale} aria-label="时间缩放" onChange={(event) => { const value = Number(event.target.value); setTimeScale(value); writeScale('time', value); }} />
+            <small>{Math.round(timeScale * 100)}%</small>
+          </span>
+        </div>
+        <div className="settings-row">
+          <span><strong>天气卡片缩放</strong><small style={{ display: 'block', color: 'var(--text-2)', fontSize: '12px', fontWeight: 400 }}>首页右上角天气卡片的显示倍率。</small></span>
+          <span className="scale-slider">
+            <input type="range" min="0.7" max="2" step="0.05" value={weatherScale} aria-label="天气卡片缩放" onChange={(event) => { const value = Number(event.target.value); setWeatherScale(value); writeScale('weather', value); }} />
+            <small>{Math.round(weatherScale * 100)}%</small>
+          </span>
+        </div>
+        {(timeScale !== 1 || weatherScale !== 1) && (
+          <button type="button" className="small-button" onClick={() => { setTimeScale(1); setWeatherScale(1); writeScale('time', 1); writeScale('weather', 1); }}>恢复默认大小</button>
+        )}
       </CollapsibleCard>
 
       <CollapsibleCard icon={Battery} title="电量传感器">

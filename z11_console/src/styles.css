@@ -226,7 +226,6 @@ strong { font-weight: 600; }
 .side-nav__settings:hover { background: var(--surface-2); color: var(--text); }
 .side-nav__settings[aria-current="page"] { border-color: var(--accent); color: var(--accent); }
 .side-nav__clock { font-size: 34px; font-weight: 300; letter-spacing: -.02em; line-height: 1; font-variant-numeric: tabular-nums; }
-.side-nav__date { color: var(--text-3); font-size: 12px; }
 
 /* ---------- 人员在家头像 ---------- */
 .people-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 4px 6px; }
@@ -260,8 +259,6 @@ strong { font-weight: 600; }
 }
 .hero__top, .hero__actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .hero__brand { color: var(--text-2); font-size: 13px; letter-spacing: .02em; }
-/* 宽屏侧栏左下角已有日期，页头只放一句话；平板窄栏与手机没有日期，才在句子后补上。 */
-.hero__brand-date { display: none; }
 .hero__actions { justify-content: flex-end; }
 .demo-flag { display: inline-flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 12px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font-size: 12px; white-space: nowrap; -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%); }
 .demo-flag > span { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), .18); animation: pulse 2.4s ease-in-out infinite; }
@@ -278,10 +275,29 @@ strong { font-weight: 600; }
 .hero h1 { margin: 0; font-size: clamp(30px, 3.2vw, 42px); font-weight: 650; letter-spacing: -.02em; line-height: 1.1; }
 /* 时间 / 日期 / 星期是三个不可分割的绝对值：只能整段一起换行，绝不能把「周六」拆成两行 */
 .datetime__time, .datetime__part { white-space: nowrap; }
+/* 时间与天气卡片的缩放倍率：设置 → 自定义 → 主页显示（本机生效）。 */
+.datetime__time { zoom: var(--time-scale, 1); }
 .hero p { margin: 6px 0 0; color: var(--text-2); font-size: 14px; }
 .status-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
 /* 没有任何活动状态时整行隐藏，不留空白间距。 */
 .status-row:empty { display: none; }
+
+/* ---------- 主页日期卡片：导航栏日期移除后，窄屏区间在这里补上，手机再隐藏 ---------- */
+.home-date-card { display: none; align-items: baseline; gap: 10px; margin: 0 0 14px; }
+.home-date-card__day { font-size: 30px; font-weight: 650; letter-spacing: -.02em; line-height: 1; }
+.home-date-card__weekday { font-size: 14px; color: var(--text-2); }
+@media (min-width: 721px) and (max-width: 1100px) {
+  .home-date-card { display: flex; }
+}
+
+/* 设置 → 主页显示：缩放滑杆 */
+.scale-slider { display: flex; align-items: center; gap: 10px; min-width: 220px; }
+.scale-slider input[type="range"] { flex: 1; min-width: 0; height: 28px; margin: 0; appearance: none; background: transparent; cursor: ew-resize; }
+.scale-slider input[type="range"]::-webkit-slider-runnable-track { height: 8px; border-radius: 999px; background: var(--overlay-2); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .3); }
+.scale-slider input[type="range"]::-webkit-slider-thumb { width: 20px; height: 20px; margin-top: -6px; appearance: none; border: 0; border-radius: 50%; background: var(--accent); box-shadow: 0 2px 8px rgba(0, 0, 0, .4); }
+.scale-slider input[type="range"]::-moz-range-track { height: 8px; border-radius: 999px; background: var(--overlay-2); }
+.scale-slider input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; border: 0; border-radius: 50%; background: var(--accent); }
+.scale-slider small { flex: none; min-width: 42px; text-align: right; color: var(--text-2); font-size: 12px; font-variant-numeric: tabular-nums; }
 .status-pill { --pill-tone: var(--text-2); display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 5px 13px 5px 11px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text); font-size: 12.5px; box-shadow: var(--highlight); -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%); }
 .status-pill svg { flex: none; color: var(--pill-tone); }
 .status-pill--light { --pill-tone: var(--accent); }
@@ -951,9 +967,7 @@ strong { font-weight: 600; }
   .side-nav__footer-bottom { flex-direction: column; align-items: center; gap: 10px; }
   .side-nav__time { justify-items: center; }
   .side-nav__clock { font-size: 20px; }
-  .side-nav__date { display: none; }
   .people-bar { display: none; }
-  .hero__brand-date { display: inline; }
 }
 
 /* ---------- Phone: bottom tab bar ---------- */
@@ -1145,7 +1159,7 @@ strong { font-weight: 600; }
 
 /* 小屏幕：标题同一行右侧的紧凑天气（宽屏隐藏） */
 .hero__title > div:first-child { flex: 1; min-width: 0; }
-.weather-compact { display: none; flex: none; align-items: center; gap: 8px; padding: 6px 8px; border: 0; border-radius: 16px; background: transparent; color: var(--text); text-align: left; }
+.weather-compact { display: none; flex: none; align-items: center; gap: 8px; padding: 6px 8px; border: 0; border-radius: 16px; background: transparent; color: var(--text); text-align: left; zoom: var(--weather-scale, 1); }
 .weather-compact:hover { background: var(--overlay); }
 .weather-compact__icon { flex: none; color: var(--wx); }
 .weather-compact strong { display: block; font-size: 34px; font-weight: 300; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }

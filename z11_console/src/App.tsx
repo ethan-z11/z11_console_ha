@@ -147,6 +147,13 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
   const accent = server.status?.accent;
   useEffect(() => { if (accent) applyAccent(accent); }, [accent]);
 
+  // 主页时间 / 天气卡片缩放：每块屏幕各自保存在本机（localStorage），设置 → 自定义 → 主页显示里调整。
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--time-scale', localStorage.getItem('z11.scale.time') ?? '1');
+    root.style.setProperty('--weather-scale', localStorage.getItem('z11.scale.weather') ?? '1');
+  }, []);
+
   // 后端推来的共用布局（首次连接或其他屏幕修改后）直接采用。
   useEffect(() => {
     if (!server.layout) return;
@@ -447,7 +454,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
       <header className={`hero${page === 'home' ? ' hero--home' : ''}${page === 'settings' ? ' hero--settings' : ''}${heroTone ? ` hero--weather weather--${heroTone}` : ''}`}>
         {page === 'room' && <RoomScene key={selectedRoom.id} room={selectedRoom} lit={selectedRoomLitCount > 0} />}
         <div className="hero__top">
-          <span className="hero__brand">{homeGreeting(now)}<span className="hero__brand-date"> · <span className="datetime__part">{homeClockParts.monthDay}</span> <span className="datetime__part">{homeClockParts.weekday}</span></span></span>
+          <span className="hero__brand">{homeGreeting(now)}</span>
           <div className="hero__actions">
             {!canControl && <span className="demo-flag demo-flag--readonly"><Eye size={14} />只读模式</span>}
             <ConnectionBadge quiet={page !== 'home'} connected={server.connected} status={server.status} staleSince={server.staleSince} offlineSince={server.offlineSince} now={now} />
@@ -479,6 +486,10 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
       <main className={`main-content ${enterClass}`} key={pageKey}>
         {page === 'home' && (
           <>
+            <div className="home-date-card" aria-hidden="true">
+              <span className="home-date-card__day">{homeClockParts.monthDay}</span>
+              <span className="home-date-card__weekday">{homeClockParts.weekday}</span>
+            </div>
             {homeCameras.length > 0 && <CameraBoard title="摄像头" cameras={homeCameras} scale={tileScale} go2rtcEnabled={server.status?.go2rtc?.enabled ?? false} />}
             {homeScenes.length > 0 && <SceneBoard title="常用情景" scenes={homeScenes} entities={server.catalogue?.entities ?? []} pendingId={pendingSceneId} onRun={runScene} />}
             <div className="section-heading">

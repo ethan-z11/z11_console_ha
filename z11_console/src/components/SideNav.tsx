@@ -4,7 +4,7 @@ import { apiPath } from '../consoleApi';
 import type { PersonStatus } from '../consoleClient';
 import { roomIcon } from '../appearance';
 import { getRoomActivity } from '../selectors';
-import { formatDateParts, formatTime } from '../time';
+import { formatTime } from '../time';
 import type { HomeState } from '../types';
 
 interface SideNavProps {
@@ -32,7 +32,6 @@ interface SideNavProps {
 /** 左侧导航：全屋在前，房间直接展开；手机上变为可横滑的底部标签栏。 */
 export function SideNav({ home, homeTitle, current, now, onHome, onOpenRoom, onSettings, onEditRooms, onOpenMusic, people, occupancy, brandTitle }: SideNavProps) {
   const navRef = useRef<HTMLElement>(null);
-  const dateParts = formatDateParts(now);
   const currentRoomId = typeof current === 'object' ? current.roomId : null;
   const currentKey = currentRoomId ?? current;
   const groups = [
@@ -86,7 +85,6 @@ export function SideNav({ home, homeTitle, current, now, onHome, onOpenRoom, onS
         <div className="side-nav__footer-bottom">
           <div className="side-nav__time">
             <span className="side-nav__clock">{formatTime(now)}</span>
-            <span className="side-nav__date"><span className="datetime__part">{dateParts.monthDay}</span> <span className="datetime__part">{dateParts.weekday}</span></span>
           </div>
           <button type="button" className="side-nav__settings" onClick={onSettings} aria-current={current === 'settings' ? 'page' : undefined} aria-label="设置" title="设置"><Settings size={18} /></button>
         </div>
