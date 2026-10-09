@@ -1,5 +1,9 @@
 # 更新日志
 
+## 1.0.56
+
+- 紧凑桌面分辨率：强制限制药丸行高度——icon-button 32px(!important)、status-pill/demo-flag max-height 32px、pills-row max-height 36px + overflow hidden，排除所有 CSS 覆盖可能
+
 ## 1.0.55
 
 - 紧凑桌面分辨率：限制药丸行高度——icon-button 缩到 32×32、status-pill min-height 28px、demo-flag/text-button 同步缩小
