@@ -294,9 +294,14 @@ strong { font-weight: 600; }
 @media (min-width: 900px) and (max-width: 1100px) and (min-height: 520px) and (max-height: 680px) {
   .hero__brand { display: none; }
   .home-date-card { display: none; }
-  /* 操作组移入 hero__main 后靠左，显示在药丸上一行 */
-  .hero__main > .hero__actions { justify-content: flex-start; margin: 0 0 6px; }
+  /* 时间顶部与天气卡 top:14px 对齐：去掉 hero__title 的 30px 上边距，hero padding-top 减到 14px */
+  .hero--home { padding-top: 14px; }
+  .hero--home .hero__title { margin-top: 0; }
 }
+/* 紧凑模式：操作组与状态药丸合并单行排列 */
+.hero__pills-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.hero__pills-row > .hero__actions { justify-content: flex-start; margin: 0; flex-wrap: nowrap; flex-shrink: 0; }
+.hero__pills-row > .status-row { margin-top: 0; flex-wrap: nowrap; }
 
 /* 设置 → 主页显示：缩放滑杆 */
 .scale-slider { display: flex; align-items: center; gap: 10px; min-width: 220px; }

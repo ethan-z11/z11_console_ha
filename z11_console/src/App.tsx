@@ -491,9 +491,17 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
               </div>
               {page === 'home' && <WeatherCompact weather={weather} onOpen={() => setWeatherOpen(true)} />}
             </div>
-            {compactHome && page === 'home' && heroActions}
-            {page === 'room' && <RoomStatusSummary home={home} roomId={selectedRoom.id} onOpen={setActiveList} />}
-            {page === 'home' && <HomeStatusSummary home={home} onOpen={setActiveList} onOpenBattery={() => setBatteryOpen(true)} batteryEnabled={server.custom?.battery?.enabled !== false} />}
+            {compactHome && page === 'home' ? (
+              <div className="hero__pills-row">
+                {heroActions}
+                <HomeStatusSummary home={home} onOpen={setActiveList} onOpenBattery={() => setBatteryOpen(true)} batteryEnabled={server.custom?.battery?.enabled !== false} />
+              </div>
+            ) : (
+              <>
+                {page === 'room' && <RoomStatusSummary home={home} roomId={selectedRoom.id} onOpen={setActiveList} />}
+                {page === 'home' && <HomeStatusSummary home={home} onOpen={setActiveList} onOpenBattery={() => setBatteryOpen(true)} batteryEnabled={server.custom?.battery?.enabled !== false} />}
+              </>
+            )}
           </div>
         </div>
         {page === 'home' && <WeatherHero weather={weather} now={now} onOpen={() => setWeatherOpen(true)} />}
