@@ -154,6 +154,16 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
     root.style.setProperty('--weather-scale', localStorage.getItem('z11.scale.weather') ?? '1');
   }, []);
 
+  // 紧凑桌面分辨率（如 1000×595）：页头操作组移到时间与药丸之间，避免被天气卡遮挡。
+  const compactQuery = '(min-width: 900px) and (max-width: 1100px) and (min-height: 520px) and (max-height: 680px)';
+  const [compactHome, setCompactHome] = useState(() => typeof window !== 'undefined' && window.matchMedia(compactQuery).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(compactQuery);
+    const handler = (e: MediaQueryListEvent) => setCompactHome(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
   // 后端推来的共用布局（首次连接或其他屏幕修改后）直接采用。
   useEffect(() => {
     if (!server.layout) return;
@@ -448,6 +458,17 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
     </button>
   );
 
+  /** 页头右侧操作组：紧凑桌面分辨率下移到时间与药丸之间，避免被天气卡遮挡。 */
+  const heroActions = (
+    <div className="hero__actions">
+      {!canControl && <span className="demo-flag demo-flag--readonly"><Eye size={14} />只读模式</span>}
+      <ConnectionBadge quiet={page !== 'home'} connected={server.connected} status={server.status} staleSince={server.staleSince} offlineSince={server.offlineSince} now={now} />
+      {!live && <button type="button" className="text-button" onClick={resetDemo} aria-label="重置演示设备状态"><RotateCcw size={15} />重置演示</button>}
+      {isIngress && <button type="button" className="icon-button" onClick={toggleKiosk} aria-pressed={kiosk} aria-label={kiosk ? '退出沉浸模式' : '沉浸模式'} title={kiosk ? '退出沉浸模式（显示 HA 侧边栏与顶栏）' : '沉浸模式（隐藏 HA 侧边栏与顶栏）'}>{kiosk ? <Minimize size={18} /> : <Maximize size={18} />}</button>}
+      <button type="button" className="icon-button hero__settings" onClick={requestSettings} aria-current={page === 'settings' ? 'page' : undefined} aria-label="设置" title="设置"><Settings size={18} /></button>
+    </div>
+  );
+
   return (
     <div className="app-shell">
       <SideNav home={home} homeTitle={homeTitle} current={page === 'room' ? { roomId: selectedRoom.id } : page} now={now} onHome={openHome} onOpenRoom={openRoom} onSettings={requestSettings} onEditRooms={canControl ? () => setRoomOrderOpen(true) : undefined} onOpenMusic={musicUrl ? openMusic : undefined} people={server.status?.people} occupancy={occupancy} brandTitle={server.status?.brandTitle} />
@@ -455,13 +476,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
         {page === 'room' && <RoomScene key={selectedRoom.id} room={selectedRoom} lit={selectedRoomLitCount > 0} />}
         <div className="hero__top">
           <span className="hero__brand">{homeGreeting(now)}</span>
-          <div className="hero__actions">
-            {!canControl && <span className="demo-flag demo-flag--readonly"><Eye size={14} />只读模式</span>}
-            <ConnectionBadge quiet={page !== 'home'} connected={server.connected} status={server.status} staleSince={server.staleSince} offlineSince={server.offlineSince} now={now} />
-            {!live && <button type="button" className="text-button" onClick={resetDemo} aria-label="重置演示设备状态"><RotateCcw size={15} />重置演示</button>}
-            {isIngress && <button type="button" className="icon-button" onClick={toggleKiosk} aria-pressed={kiosk} aria-label={kiosk ? '退出沉浸模式' : '沉浸模式'} title={kiosk ? '退出沉浸模式（显示 HA 侧边栏与顶栏）' : '沉浸模式（隐藏 HA 侧边栏与顶栏）'}>{kiosk ? <Minimize size={18} /> : <Maximize size={18} />}</button>}
-            <button type="button" className="icon-button hero__settings" onClick={requestSettings} aria-current={page === 'settings' ? 'page' : undefined} aria-label="设置" title="设置"><Settings size={18} /></button>
-          </div>
+          {(!compactHome || page !== 'home') && heroActions}
         </div>
         <div className={`hero__body ${enterClass}`} key={pageKey}>
           <div className="hero__main">
@@ -476,6 +491,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
               </div>
               {page === 'home' && <WeatherCompact weather={weather} onOpen={() => setWeatherOpen(true)} />}
             </div>
+            {compactHome && page === 'home' && heroActions}
             {page === 'room' && <RoomStatusSummary home={home} roomId={selectedRoom.id} onOpen={setActiveList} />}
             {page === 'home' && <HomeStatusSummary home={home} onOpen={setActiveList} onOpenBattery={() => setBatteryOpen(true)} batteryEnabled={server.custom?.battery?.enabled !== false} />}
           </div>

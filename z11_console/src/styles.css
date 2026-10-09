@@ -294,6 +294,10 @@ strong { font-weight: 600; }
 @media (min-width: 900px) and (max-width: 1100px) and (min-height: 520px) and (max-height: 680px) {
   .hero__brand { display: none; }
   .home-date-card { display: none; }
+  /* 天气卡高度自适应内容，缩放滑杆能同时改变宽高（不再被 top+bottom 锁死） */
+  .hero--home > .weather-hero { bottom: auto; height: auto; }
+  /* 操作组移入 hero__main 后靠左，显示在药丸上一行 */
+  .hero__main > .hero__actions { justify-content: flex-start; margin: 0 0 6px; }
 }
 
 /* 设置 → 主页显示：缩放滑杆 */
