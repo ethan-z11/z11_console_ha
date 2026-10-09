@@ -302,6 +302,10 @@ strong { font-weight: 600; }
 .hero__pills-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .hero__pills-row > .hero__actions { justify-content: flex-start; margin: 0; flex-wrap: nowrap; flex-shrink: 0; }
 .hero__pills-row > .status-row { margin-top: 0; flex-wrap: nowrap; }
+.hero__pills-row .icon-button { width: 32px; height: 32px; }
+.hero__pills-row .status-pill { min-height: 28px; padding: 3px 11px 3px 9px; font-size: 12px; }
+.hero__pills-row .demo-flag { min-height: 28px; }
+.hero__pills-row .text-button { min-height: 28px; }
 
 /* 设置 → 主页显示：缩放滑杆 */
 .scale-slider { display: flex; align-items: center; gap: 10px; min-width: 220px; }

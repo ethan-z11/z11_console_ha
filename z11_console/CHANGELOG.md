@@ -1,5 +1,9 @@
 # 更新日志
 
+## 1.0.55
+
+- 紧凑桌面分辨率：限制药丸行高度——icon-button 缩到 32×32、status-pill min-height 28px、demo-flag/text-button 同步缩小
+
 ## 1.0.54
 
 - 紧凑桌面分辨率：时间顶部与天气卡顶部对齐（hero padding-top 减到 14px、hero__title 去掉 30px 上边距）
