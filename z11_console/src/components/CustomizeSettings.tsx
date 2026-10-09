@@ -834,14 +834,14 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
         <div className="settings-row">
           <span><strong>时间缩放</strong><small style={{ display: 'block', color: 'var(--text-2)', fontSize: '12px', fontWeight: 400 }}>首页大时钟的显示倍率。</small></span>
           <span className="scale-slider">
-            <input type="range" min="0.7" max="2" step="0.05" value={timeScale} aria-label="时间缩放" onChange={(event) => { const value = Number(event.target.value); setTimeScale(value); writeScale('time', value); }} />
+            <input type="range" min="0.7" max="3" step="0.05" value={timeScale} aria-label="时间缩放" onChange={(event) => { const value = Number(event.target.value); setTimeScale(value); writeScale('time', value); }} />
             <small>{Math.round(timeScale * 100)}%</small>
           </span>
         </div>
         <div className="settings-row">
           <span><strong>天气卡片缩放</strong><small style={{ display: 'block', color: 'var(--text-2)', fontSize: '12px', fontWeight: 400 }}>首页右上角天气卡片的显示倍率。</small></span>
           <span className="scale-slider">
-            <input type="range" min="0.7" max="2" step="0.05" value={weatherScale} aria-label="天气卡片缩放" onChange={(event) => { const value = Number(event.target.value); setWeatherScale(value); writeScale('weather', value); }} />
+            <input type="range" min="0.7" max="3" step="0.05" value={weatherScale} aria-label="天气卡片缩放" onChange={(event) => { const value = Number(event.target.value); setWeatherScale(value); writeScale('weather', value); }} />
             <small>{Math.round(weatherScale * 100)}%</small>
           </span>
         </div>

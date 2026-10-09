@@ -290,6 +290,12 @@ strong { font-weight: 600; }
   .home-date-card { display: flex; }
 }
 
+/* 1000×595 等紧凑桌面分辨率：隐藏问候语与日期卡片，让时间 / 天气 / 药丸更突出 */
+@media (min-width: 900px) and (max-width: 1100px) and (min-height: 520px) and (max-height: 680px) {
+  .hero__brand { display: none; }
+  .home-date-card { display: none; }
+}
+
 /* 设置 → 主页显示：缩放滑杆 */
 .scale-slider { display: flex; align-items: center; gap: 10px; min-width: 220px; }
 .scale-slider input[type="range"] { flex: 1; min-width: 0; height: 28px; margin: 0; appearance: none; background: transparent; cursor: ew-resize; }
@@ -1134,7 +1140,7 @@ strong { font-weight: 600; }
 @keyframes weather-snow { to { background-position: 30px 420px, 60px 670px; } }
 
 /* 天气卡：v1.0.31 的排版 + 中性毛玻璃（不随天气着色） */
-.weather-hero { position: relative; isolation: isolate; display: flex; flex: none; flex-direction: column; align-items: stretch; gap: 10px; max-width: 100%; margin-top: 12px; padding: 12px 16px; overflow: hidden; border: 1px solid var(--glass-border); border-radius: 22px; background: linear-gradient(180deg, var(--sheen), transparent 55%), var(--glass); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: var(--highlight), var(--shadow); color: var(--text); text-align: left; transition: background-color .2s; }
+.weather-hero { position: relative; isolation: isolate; display: flex; flex: none; flex-direction: column; align-items: stretch; gap: 10px; max-width: 100%; margin-top: 12px; padding: 12px 16px; overflow: hidden; border: 1px solid var(--glass-border); border-radius: 22px; background: linear-gradient(180deg, var(--sheen), transparent 55%), var(--glass); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: var(--highlight), var(--shadow); color: var(--text); text-align: left; transition: background-color .2s; zoom: var(--weather-scale, 1); }
 .weather-hero:hover { background: linear-gradient(180deg, var(--sheen), transparent 55%), var(--glass-strong); }
 .weather-hero__backdrop { position: absolute; top: 50%; right: -18px; z-index: -1; color: var(--wx); opacity: .07; transform: translateY(-50%); pointer-events: none; }
 .weather-hero__body { display: flex; align-items: flex-end; gap: 26px; }
