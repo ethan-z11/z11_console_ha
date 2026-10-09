@@ -297,15 +297,18 @@ strong { font-weight: 600; }
   /* 时间顶部与天气卡 top:14px 对齐：去掉 hero__title 的 30px 上边距，hero padding-top 减到 14px */
   .hero--home { padding-top: 14px; }
   .hero--home .hero__title { margin-top: 0; }
+  /* hero 不再固定 232px 高度，内容自然结束，下方板块往上靠 */
+  .hero--home { min-height: 0 !important; }
+  .hero__body { align-items: flex-start; }
 }
 /* 紧凑模式：操作组与状态药丸合并单行排列 */
-.hero__pills-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; max-height: 36px; overflow: hidden; }
-.hero__pills-row > .hero__actions { justify-content: flex-start; margin: 0; flex-wrap: nowrap; flex-shrink: 0; max-height: 36px; }
-.hero__pills-row > .status-row { margin-top: 0; flex-wrap: nowrap; max-height: 36px; }
+.hero__pills-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.hero__pills-row > .hero__actions { justify-content: flex-start; margin: 0; flex-wrap: nowrap; flex-shrink: 0; }
+.hero__pills-row > .status-row { margin-top: 0; flex-wrap: nowrap; }
 .hero__pills-row .icon-button { width: 32px !important; height: 32px !important; }
-.hero__pills-row .status-pill { min-height: 28px !important; max-height: 32px; padding: 3px 11px 3px 9px !important; font-size: 12px !important; line-height: 1; }
-.hero__pills-row .demo-flag { min-height: 28px !important; max-height: 32px; padding: 0 12px !important; line-height: 1; }
-.hero__pills-row .text-button { min-height: 28px !important; max-height: 32px; }
+.hero__pills-row .status-pill { min-height: 28px !important; padding: 3px 11px 3px 9px !important; font-size: 12px !important; white-space: nowrap; }
+.hero__pills-row .demo-flag { min-height: 28px !important; padding: 0 12px !important; white-space: nowrap; }
+.hero__pills-row .text-button { min-height: 28px !important; white-space: nowrap; }
 
 /* 设置 → 主页显示：缩放滑杆 */
 .scale-slider { display: flex; align-items: center; gap: 10px; min-width: 220px; }

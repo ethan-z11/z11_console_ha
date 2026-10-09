@@ -1,5 +1,10 @@
 # 更新日志
 
+## 1.0.57
+
+- 紧凑桌面分辨率：修复药丸文字被截断——去掉 max-height/overflow hidden，改用 white-space: nowrap 防止换行
+- 紧凑桌面分辨率：hero 去掉固定 232px min-height，内容自然结束，摄像头等下方板块往上靠拢
+
 ## 1.0.56
 
 - 紧凑桌面分辨率：强制限制药丸行高度——icon-button 32px(!important)、status-pill/demo-flag max-height 32px、pills-row max-height 36px + overflow hidden，排除所有 CSS 覆盖可能
