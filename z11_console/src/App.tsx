@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
-import { Eye, Maximize, Minimize, Pencil, PersonStanding, Snowflake, Sun, Power, RotateCcw, Settings, Star } from 'lucide-react';
+import { Eye, Pencil, PersonStanding, Snowflake, Sun, Power, RotateCcw, Settings, Star } from 'lucide-react';
 import { AdaptiveGrid } from './components/AdaptiveGrid';
 import { ActiveDevicesDialog } from './components/ActiveDevicesDialog';
 import type { ActiveListRequest } from './components/ActiveDevicesDialog';
@@ -25,7 +25,6 @@ import { allowedSizesForDevice, favoriteIds, favoriteSizeKey, fromServerLayout, 
 import { getRoomDevices, isClimate, isLit, isRunning, sortRunning } from './selectors';
 import { sceneDisplayName, sceneTargetService } from './haAdapter';
 import { formatDateParts, formatTime, homeGreeting, useNow } from './time';
-import { isIngress, kioskOn, restoreKiosk, setKiosk } from './kiosk';
 import type { Device, DeviceActions, LayoutState, Room, TileSize } from './types';
 import { useConsole } from './useConsole';
 import { readOnlyActions, useHome } from './useHome';
@@ -42,7 +41,8 @@ type Page = 'home' | 'room' | 'settings' | 'music';
 const favoritesScope = 'favorites';
 
 function presentDevices(devices: Device[], ids: string[]): Device[] {
-  return ids.map((id) => devices.find((device) => device.id === id)).filter((device): device is Device => Boolean(device));
+  // hidden 子设备不在常用 / 正在运行等任何页面显示，只出现在宿主设置弹窗里。
+  return ids.map((id) => devices.find((device) => device.id === id)).filter((device): device is Device => Boolean(device) && device!.hidden !== true);
 }
 
 /** 区域有人 / 无人徽标：仅在该区域配置了传感器时显示。 */
@@ -332,15 +332,6 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
     if (page !== 'settings') openSettings();
   }
 
-  /** HAOS Ingress 沉浸模式：隐藏 HA 自身的侧边栏与顶栏；页面加载时恢复上次状态。 */
-  const [kiosk, setKioskState] = useState(kioskOn());
-  useEffect(() => { restoreKiosk(); }, []);
-  function toggleKiosk() {
-    const next = !kiosk;
-    setKiosk(next);
-    setKioskState(next);
-  }
-
   function openSettings() {
     setEnterDirection(0);
     leaveLayoutEditing();
@@ -406,8 +397,20 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
     setSelectedClimateId(null);
   }
 
+  // 子设备绑定：宿主设备 id → 子设备列表（hidden），供灯 / 窗帘设置弹窗渲染大卡片。
+  const childDevicesByHost = useMemo(() => {
+    const map = new Map<string, Device[]>();
+    for (const [hostId, childIds] of Object.entries(server.custom?.children ?? {})) {
+      const list = childIds
+        .map((id) => home.devices.find((device) => device.id === id))
+        .filter((device): device is Device => Boolean(device));
+      if (list.length > 0) map.set(hostId, list);
+    }
+    return map;
+  }, [home.devices, server.custom]);
+
   function card(device: Device, room: Room, tile: TilePlacement) {
-    return <DeviceCard key={device.id} device={device} room={room} tile={tile} actions={actions} onOpenClimate={setSelectedClimateId} seasonLock={season === 'summer' && device.kind === 'heating' ? '夏季停用' : undefined} />;
+    return <DeviceCard key={device.id} device={device} room={room} tile={tile} actions={actions} onOpenClimate={setSelectedClimateId} seasonLock={season === 'summer' && device.kind === 'heating' ? '夏季停用' : undefined} childDevices={childDevicesByHost.get(device.id)} />;
   }
 
   /** 常用区卡片可在“编辑”里切换 1×1／2×1，尺寸单独保存，不影响房间里的同一设备。 */
@@ -464,7 +467,6 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
       {!canControl && <span className="demo-flag demo-flag--readonly"><Eye size={14} />只读模式</span>}
       <ConnectionBadge quiet={page !== 'home'} connected={server.connected} status={server.status} staleSince={server.staleSince} offlineSince={server.offlineSince} now={now} />
       {!live && <button type="button" className="text-button" onClick={resetDemo} aria-label="重置演示设备状态"><RotateCcw size={15} />重置演示</button>}
-      {isIngress && <button type="button" className="icon-button" onClick={toggleKiosk} aria-pressed={kiosk} aria-label={kiosk ? '退出沉浸模式' : '沉浸模式'} title={kiosk ? '退出沉浸模式（显示 HA 侧边栏与顶栏）' : '沉浸模式（隐藏 HA 侧边栏与顶栏）'}>{kiosk ? <Minimize size={18} /> : <Maximize size={18} />}</button>}
       <button type="button" className="icon-button hero__settings" onClick={requestSettings} aria-current={page === 'settings' ? 'page' : undefined} aria-label="设置" title="设置"><Settings size={18} /></button>
     </div>
   );

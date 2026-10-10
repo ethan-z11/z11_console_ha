@@ -1,7 +1,7 @@
 import { Home } from 'lucide-react';
 import { allowedSizesForDevice } from '../layout';
 import { isClimate } from '../selectors';
-import type { Device, DeviceActions, Room } from '../types';
+import type { CoverDevice, Device, DeviceActions, LightDevice, Room } from '../types';
 import { ClimateCard } from './ClimateCard';
 import { CoverCard } from './CoverCard';
 import { FanCard } from './FanCard';
@@ -21,14 +21,16 @@ interface DeviceCardProps {
   onOpenClimate: (id: string) => void;
   /** 季节限制说明（如夏季的地暖显示“夏季停用”）；只影响温控卡片的显示。 */
   seasonLock?: string;
+  /** 绑定的子设备（hidden）：显示在宿主设置弹窗里，不单独显示卡片。 */
+  childDevices?: Device[];
 }
 
 /** 按设备类型选择卡片；只读传感器与安全告警不进网格，由顶部摘要显示。 */
-export function DeviceCard({ device, room, tile, actions, onOpenClimate, seasonLock }: DeviceCardProps) {
+export function DeviceCard({ device, room, tile, actions, onOpenClimate, seasonLock, childDevices }: DeviceCardProps) {
   const layout: TileLayoutProps = { ...tile, id: device.id, label: `${room.name}${device.name}`, allowedSizes: allowedSizesForDevice(device) };
 
   if (device.kind === 'light') {
-    return <LightCard layout={layout} light={device} room={room} onToggle={actions.toggle} onChange={actions.changeLight} />;
+    return <LightCard layout={layout} light={device} room={room} onToggle={actions.toggle} onChange={actions.changeLight} childDevices={childDevices?.filter((item): item is LightDevice => item.kind === 'light')} />;
   }
 
   if (device.kind === 'media') {
@@ -44,7 +46,7 @@ export function DeviceCard({ device, room, tile, actions, onOpenClimate, seasonL
   }
 
   if (device.kind === 'cover') {
-    return <CoverCard layout={layout} cover={device} room={room} onOpen={actions.coverOpen} onClose={actions.coverClose} onStop={actions.coverStop} onPosition={actions.coverPosition} />;
+    return <CoverCard layout={layout} cover={device} room={room} onOpen={actions.coverOpen} onClose={actions.coverClose} onStop={actions.coverStop} onPosition={actions.coverPosition} childDevices={childDevices?.filter((item): item is CoverDevice => item.kind === 'cover')} />;
   }
 
   if (device.kind === 'vacuum') {

@@ -15,6 +15,8 @@ interface BaseDevice {
   available: boolean;
   /** 设置里给该实体自定义的图标键；未设置时按类型 / 名称自动匹配。 */
   icon?: string;
+  /** 子设备（绑定在灯 / 窗帘宿主下）：不单独显示卡片，只在宿主的设置弹窗里以大卡片展示与控制。 */
+  hidden?: boolean;
 }
 
 export interface LightDevice extends BaseDevice {

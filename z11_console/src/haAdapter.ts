@@ -367,6 +367,13 @@ export function liveHome(catalogue: Catalogue | null, states: States, previous: 
     });
   }
 
+  // 子设备绑定：宿主 id → 子设备 id 集合。子设备不进房间列表（hidden），只供宿主设置弹窗渲染与控制。
+  const childrenOf = custom.children ?? {};
+  const childToHost = new Map<string, string>();
+  for (const [hostId, childIds] of Object.entries(childrenOf)) {
+    for (const childId of childIds) childToHost.set(childId, hostId);
+  }
+
   for (const entity of entities) {
     const state = states.get(entity.id);
     if (entity.domain === 'person') {
@@ -393,6 +400,24 @@ export function liveHome(catalogue: Catalogue | null, states: States, previous: 
         level: Number.isFinite(level) ? Math.round(level) : null,
         highlight: entity.id === custom.battery?.highlightEntity,
       });
+      continue;
+    }
+    // 子设备：不进入房间列表，只在宿主设置弹窗里显示；roomId 记宿主房间，类型必须与宿主一致（灯 / 窗帘）。
+    const boundHost = childToHost.get(entity.id);
+    if (boundHost !== undefined) {
+      if (entity.domain !== 'light' && entity.domain !== 'cover') continue;
+      const hostRoom = custom.assignments[boundHost];
+      const childRoom = hostRoom && roomIds.has(hostRoom) ? hostRoom : '';
+      const base = baseDevice(entity, childRoom, state);
+      if (!base) continue;
+      const override = custom.entities?.[entity.id];
+      if (override) {
+        if (override.name) base.name = override.name;
+        if (override.icon) base.icon = override.icon;
+      }
+      const prior = previousDevices.get(entity.id);
+      if (!usable(state)) devices.push(prior && prior.kind === base.kind ? { ...prior, roomId: childRoom, name: base.name, icon: base.icon, available: false, hidden: true } : { ...base, hidden: true });
+      else devices.push({ ...toDevice(base, prior && prior.kind === base.kind ? prior : undefined, state), hidden: true });
       continue;
     }
     // 完全手动房间：未加入任何（仍存在的）房间的实体一律不显示，包括农历这类全局文本实体。

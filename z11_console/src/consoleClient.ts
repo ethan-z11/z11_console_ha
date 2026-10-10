@@ -2,7 +2,6 @@
  * 与控制台后端（home-console/server）的 WebSocket 连接。
  * 后端保管 HA 令牌并持有唯一的 HA 连接，自动发现设备并按黑白名单过滤；浏览器只接收目录、状态和布局，按实体请求控制。
  */
-import { apiPath } from './consoleApi';
 import type { Accent } from './theme';
 import type { LayoutState } from './types';
 
@@ -75,6 +74,9 @@ export interface CustomConfig {
   occupancy?: Record<string, string[]>;
   /** 电量传感器显示偏好：主页药丸开关、手动剔除、改名、常驻实体。 */
   battery?: BatteryConfig;
+  /** 子设备绑定：宿主实体 id → 子设备实体 id 列表（灯→灯 / 窗帘→窗帘）。
+   *  子设备不再单独显示卡片，只在宿主的设置弹窗里以大卡片展示与控制。 */
+  children?: Record<string, string[]>;
 }
 
 export interface BatteryConfig {
@@ -99,12 +101,12 @@ export interface MetricSource {
   attribute: string;
 }
 
-/** 摄像头接入方式：rtsp 直填地址；onvif 填主机 / 端口 / 账密，取流地址由后端探测。 */
+/** 摄像头接入方式：rtsp 直填地址；onvif 填主机 / 端口 / 账密，取流地址由后端探测（可另填 rtspUrl 覆盖）。 */
 export type CameraType = 'rtsp' | 'onvif';
 
 /**
  * 自定义摄像头。
- * rtspUrl（RTSP）与 host/port/username/password（ONVIF）仅管理接口返回；
+ * rtspUrl（RTSP 必填，ONVIF 可选作画面地址覆盖）与 host/port/username/password（ONVIF）仅管理接口返回；
  * WS 推送给普通屏幕时被服务端剥离，只保留 id/name/scope/type。
  */
 export interface CameraConfig {
@@ -148,7 +150,7 @@ export interface ServerStatus {
   dataSource: 'demo' | 'live';
   controlEnabled: boolean;
   /** 运动检测截图总开关（设置 → 设备）；关闭后停止所有 ONVIF 事件订阅与帧差兜底。 */
-  motionCapture: boolean;
+  motionCapture?: boolean;
   /** "我的家庭"页标题与副标题（设置 → 显示），所有屏幕共用；副标题为空表示不显示。 */
   homeTitle?: string;
   /** 家庭名称（默认"家庭控制"，同步网页标题）。 */
@@ -169,13 +171,13 @@ export interface ServerStatus {
   allOffScopes?: string[];
   /** “一键关闭”额外指定的实体 ID。 */
   allOffEntities?: string[];
-  /** “一键关闭”要排除的实体 ID（即使符合类别/区域也不关）。 */
+  /** “一键关闭”排除的实体 ID（即使符合类别与区域也不关闭）。 */
   allOffExcludes?: string[];
   /** 全屋共用的天气地区（服务端保存）；未选择时为 null。 */
   weatherPlace?: WeatherPlace | null;
   /** 人员在家状态列表（从 HA 实体判断后由后端下发）。 */
   people?: PersonStatus[];
-  /** go2rtc 低延迟流媒体是否已配置（启用后摄像头走 WebRTC，自动回退 MSE/MJPEG）。 */
+  /** go2rtc 低延迟流媒体：enabled 时摄像头走 WebRTC（回退 MSE/HLS/MP4/MJPEG）。 */
   go2rtc?: { enabled: boolean; modes?: string };
   /** 区域有人状态：scope（home / 房间 id）→ 是否有人；只包含已配置传感器的区域。 */
   occupancy?: Record<string, boolean>;
@@ -317,7 +319,7 @@ export class ConsoleClient {
   }
 
   private open() {
-    const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${apiPath('/api/ws')}`);
+    const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/ws`);
     this.socket = socket;
     window.clearTimeout(this.connectTimer);
     this.connectTimer = window.setTimeout(() => {

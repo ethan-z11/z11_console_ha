@@ -16,13 +16,17 @@ interface CoverCardProps {
   onClose: (id: string) => void;
   onStop: (id: string) => void;
   onPosition: (id: string, position: number) => void;
+  /** 绑定的子窗帘：显示在设置弹窗里（大卡片）；宿主卡片因此获得设置按钮。 */
+  childDevices?: CoverDevice[];
 }
 
 /** 窗帘 / 卷帘卡片：开合开关、位置滑杆（0 全关 - 100 全开）与停止。 */
-export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosition }: CoverCardProps) {
+export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosition, childDevices }: CoverCardProps) {
   const { size, editing } = layout;
   const DeviceIcon = deviceIcon(cover);
   const compact = size === '1x1';
+  const childCovers = childDevices ?? [];
+  const hasChildren = childCovers.length > 0;
   const disabled = !cover.available || Boolean(editing);
   const moving = cover.state === 'opening' || cover.state === 'closing';
   const active = cover.state === 'open' || moving;
@@ -73,6 +77,8 @@ export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosi
             {powerButton}
             <div className="light-card__identity"><span className="tile__room tile__room--inline" aria-hidden="true">{room.name}</span><span className="tile__name">{cover.name}</span><span className="tile__note">{status}</span></div>
             <span className="tile__room">{room.name}</span>
+            {/* 大卡片本身没有设置按钮；绑定了子窗帘后与小卡片一样弹出设置弹窗（内含子窗帘大卡片）。 */}
+            {hasChildren && !editing && <button type="button" className="light-card__settings" onClick={() => setDetailOpen(true)} disabled={!cover.available} aria-label={`设置${label}与它的子窗帘`} aria-haspopup="dialog" aria-controls={detailOpen ? detailId : undefined}><SlidersHorizontal size={18} /></button>}
           </div>
           <div className="light-card__controls">
             {cover.supportsPosition && <div className="light-card__range cover-card__range">
@@ -104,6 +110,14 @@ export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosi
         {cover.supportsStop && <button type="button" className="cover-card__button" onClick={() => onStop(cover.id)} disabled={!cover.available} aria-label={`停止${label}`}><CircleStop size={17} /><span>停止</span></button>}
         <button type="button" className="cover-card__button" onClick={() => onClose(cover.id)} disabled={!cover.available || (cover.position !== undefined ? position <= 0 : cover.state === 'closed')} aria-label={`关闭${label}`}><ArrowDownToLine size={17} /><span>关闭</span></button>
       </div>
+      {hasChildren && <div className="light-detail-dialog__children">
+        <span className="light-detail-dialog__children-title">子窗帘</span>
+        <div className="light-detail-dialog__children-grid">
+          {childCovers.map((child) => (
+            <CoverCard key={child.id} layout={{ id: child.id, label: `${room.name}${child.name}`, size: '2x1' }} cover={child} room={room} onOpen={onOpen} onClose={onClose} onStop={onStop} onPosition={onPosition} />
+          ))}
+        </div>
+      </div>}
     </dialog>, document.body)}
     </>
   );

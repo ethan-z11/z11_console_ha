@@ -69,14 +69,20 @@ interface LightCardProps {
   room: Room;
   onToggle: (id: string) => void;
   onChange: (id: string, patch: LightPatch) => void;
+  /** 绑定的子灯：显示在设置弹窗里（大卡片）；宿主卡片因此获得设置按钮。 */
+  childDevices?: LightDevice[];
+  /** 在宿主设置弹窗里渲染子灯时隐藏颜色浮层入口（弹窗是原生顶层，portal 颜色面板会被盖住）。 */
+  hidePalette?: boolean;
 }
 
-export function LightCard({ layout, light, room, onToggle, onChange }: LightCardProps) {
+export function LightCard({ layout, light, room, onToggle, onChange, childDevices, hidePalette }: LightCardProps) {
   const { size, editing } = layout;
   const DeviceIcon = deviceIcon(light);
   const variant = getLightVariant(light);
   const adjustable = variant !== 'switch';
   const compact = adjustable && size === '1x1';
+  const childLights = childDevices ?? [];
+  const hasChildren = childLights.length > 0;
   const disabled = !light.available || Boolean(editing);
   const status = !light.available ? '设备不可用' : light.on ? '已打开' : '已关闭';
   const brightness = light.brightness ?? 100;
@@ -157,7 +163,9 @@ export function LightCard({ layout, light, room, onToggle, onChange }: LightCard
         <button type="button" className="tile__power" onClick={() => onToggle(light.id)} disabled={disabled} aria-label={`${light.on ? '关闭' : '打开'}${room.name}${light.name}`} aria-pressed={light.on}><DeviceIcon size={21} /></button>
         {adjustable && !compact && <div className="light-card__identity"><span className="tile__room tile__room--inline" aria-hidden="true">{room.name}</span><span className="tile__name">{light.name}</span><span className="tile__note">{status}</span></div>}
         <span className="tile__room">{room.name}</span>
-        {hasPalette && !compact && <button ref={triggerRef} type="button" className="light-card__palette-trigger" style={{ '--light-selected-color': activeColorMode === 'color' ? light.color ?? '#ffffff' : '#fff3dd' } as CSSProperties} onClick={togglePalette} disabled={disabled} aria-label={`选择${room.name}${light.name}灯光颜色`} aria-haspopup="dialog" aria-expanded={paletteOpen} aria-controls={paletteOpen ? paletteId : undefined}><Palette size={19} /></button>}
+        {hasPalette && !compact && !hidePalette && <button ref={triggerRef} type="button" className="light-card__palette-trigger" style={{ '--light-selected-color': activeColorMode === 'color' ? light.color ?? '#ffffff' : '#fff3dd' } as CSSProperties} onClick={togglePalette} disabled={disabled} aria-label={`选择${room.name}${light.name}灯光颜色`} aria-haspopup="dialog" aria-expanded={paletteOpen} aria-controls={paletteOpen ? paletteId : undefined}><Palette size={19} /></button>}
+        {/* 大卡片本身没有设置按钮；绑定了子灯后与小卡片一样弹出设置弹窗（内含子灯大卡片）。 */}
+        {!compact && hasChildren && !editing && <button type="button" className="light-card__settings" onClick={() => setDetailOpen(true)} disabled={!light.available} aria-label={`设置${room.name}${light.name}与它的子灯`} aria-haspopup="dialog" aria-controls={detailOpen ? detailId : undefined}><SlidersHorizontal size={18} /></button>}
       </div>
       {adjustable && !compact ? (
         <div className="light-card__controls">
@@ -173,7 +181,7 @@ export function LightCard({ layout, light, room, onToggle, onChange }: LightCard
           </div>}
         </div>
       ) : <div className="light-card__compact-bottom"><div className="light-card__identity"><span className="tile__room tile__room--inline" aria-hidden="true">{room.name}</span><span className="tile__name">{light.name}</span><span className="tile__note">{status}</span></div>
-        {compact && !editing && <button type="button" className="light-card__settings" onClick={() => setDetailOpen(true)} disabled={!light.available} aria-label={`设置${room.name}${light.name}亮度、色温和颜色`} aria-haspopup="dialog" aria-controls={detailOpen ? detailId : undefined}><SlidersHorizontal size={18} /></button>}
+        {(compact || hasChildren) && !editing && <button type="button" className="light-card__settings" onClick={() => setDetailOpen(true)} disabled={!light.available} aria-label={`设置${room.name}${light.name}亮度、色温和颜色`} aria-haspopup="dialog" aria-controls={detailOpen ? detailId : undefined}><SlidersHorizontal size={18} /></button>}
       </div>}
     </TileFrame>
     {paletteOpen && createPortal(<div ref={panelRef} id={paletteId} className="light-palette" role="dialog" aria-label={`${room.name}${light.name}灯光颜色`} style={palettePosition}>
@@ -185,6 +193,14 @@ export function LightCard({ layout, light, room, onToggle, onChange }: LightCard
       <div className="light-detail-dialog__control"><div><label htmlFor={`${detailId}-brightness`}>亮度</label><output>{brightness}%</output></div><input id={`${detailId}-brightness`} type="range" min="1" max="100" value={brightness} onChange={(event) => onChange(light.id, { brightness: Number(event.target.value) })} disabled={!light.available} /></div>
       {supportsColorTemperature(light) && <div className="light-detail-dialog__control"><div><label htmlFor={`${detailId}-temperature`}>色温</label><output>{colorTemp}K</output></div><input id={`${detailId}-temperature`} type="range" min={minColorTemp} max={maxColorTemp} step="1" value={colorTemp} onChange={(event) => onChange(light.id, { colorTemp: Number(event.target.value) })} disabled={!light.available} /></div>}
       {hasPalette && <div className="light-detail-dialog__colors"><ColorChoices light={light} room={room} brightness={brightness} colorTemp={colorTemp} activeColorMode={activeColorMode} boardPoint={boardPoint} onChoose={chooseColor} onBoardChoose={chooseBoardColor} /></div>}
+      {hasChildren && <div className="light-detail-dialog__children">
+        <span className="light-detail-dialog__children-title">子灯</span>
+        <div className="light-detail-dialog__children-grid">
+          {childLights.map((child) => (
+            <LightCard key={child.id} layout={{ id: child.id, label: `${room.name}${child.name}`, size: '2x1' }} light={child} room={room} onToggle={onToggle} onChange={onChange} hidePalette />
+          ))}
+        </div>
+      </div>}
     </dialog>, document.body)}
     </>
   );

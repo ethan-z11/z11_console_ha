@@ -33,14 +33,14 @@ const roomOrder: Record<Device['kind'], number> = { light: 0, climate: 1, heatin
 
 export function getRoomDevices(home: HomeState, roomId: string): Device[] {
   return home.devices
-    .filter((device) => device.roomId === roomId && isControllable(device))
+    .filter((device) => device.roomId === roomId && !device.hidden && isControllable(device))
     .sort((a, b) => roomOrder[a.kind] - roomOrder[b.kind]);
 }
 
 export type ActivityTone = 'alert' | 'light' | 'heat' | 'cool' | 'media';
 
 export function getRoomActivity(home: HomeState, roomId: string): { key: string; tone: ActivityTone; label: string }[] {
-  const devices = home.devices.filter((device) => device.roomId === roomId);
+  const devices = home.devices.filter((device) => device.roomId === roomId && !device.hidden);
   const lit = devices.filter(isLit).length;
   const runningClimate = devices.filter((device): device is ClimateDevice => isClimate(device) && device.available && device.on);
   const runningFans = devices.filter((device): device is FanDevice => device.kind === 'fan' && device.available && device.on);
@@ -63,7 +63,8 @@ export function isRunning(device: Device): boolean {
 }
 
 export function runningDeviceIds(home: HomeState): string[] {
-  return home.devices.filter(isRunning).map((device) => device.id);
+  // 子设备（hidden）不进「正在运行」列表，也不参与一键关闭：只通过宿主设置弹窗控制。
+  return home.devices.filter((device) => !device.hidden && isRunning(device)).map((device) => device.id);
 }
 
 const runningOrder: Record<Device['kind'], number> = { climate: 0, heating: 1, fan: 2, light: 3, media: 4, vacuum: 5, switch: 6, cover: 9, sensor: 9, safety: 9 };
