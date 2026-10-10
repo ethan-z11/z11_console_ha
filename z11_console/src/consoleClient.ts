@@ -2,6 +2,7 @@
  * 与控制台后端（home-console/server）的 WebSocket 连接。
  * 后端保管 HA 令牌并持有唯一的 HA 连接，自动发现设备并按黑白名单过滤；浏览器只接收目录、状态和布局，按实体请求控制。
  */
+import { apiPath } from './consoleApi';
 import type { Accent } from './theme';
 import type { LayoutState } from './types';
 
@@ -319,7 +320,7 @@ export class ConsoleClient {
   }
 
   private open() {
-    const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/ws`);
+    const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${apiPath('/api/ws')}`);
     this.socket = socket;
     window.clearTimeout(this.connectTimer);
     this.connectTimer = window.setTimeout(() => {
