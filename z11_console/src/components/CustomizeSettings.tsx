@@ -278,8 +278,8 @@ function ChildBindPicker({ entities, custom, initialHostId, onSave, onClose }: {
   const close = () => dialogRef.current?.close();
   const handleKey = (event: KeyboardEvent<HTMLDialogElement>) => { if (event.key === 'Escape') event.preventDefault(); };
 
-  // 宿主候选：在线的灯 / 窗帘，且不是任何绑定的子设备；编辑时已绑定的宿主始终可回显。
-  const hostPool = entities.filter((entity) => (entity.domain === 'light' || entity.domain === 'cover') && entity.available !== false && !childOwner.has(entity.id));
+  // 宿主候选：已加入某个房间（宿主没有卡片就无法打开它的设置弹窗，绑定没有意义）、在线的灯 / 窗帘，且不是任何绑定的子设备；编辑时已绑定的宿主始终可回显。
+  const hostPool = entities.filter((entity) => (entity.domain === 'light' || entity.domain === 'cover') && entity.available !== false && !childOwner.has(entity.id) && Boolean(custom.assignments[entity.id]));
   const host = entities.find((entity) => entity.id === hostId);
   const hostOptions = !hostId || hostPool.some((entity) => entity.id === hostId) ? hostPool : host ? [host, ...hostPool] : hostPool;
   // 子设备候选：与宿主同域、不是宿主自己、不是任何绑定的宿主或子设备。
@@ -345,7 +345,7 @@ function ChildBindPicker({ entities, custom, initialHostId, onSave, onClose }: {
       <div className="customize-dialog__body">
         <p className="settings-message">先选宿主设备（灯 / 窗帘），再勾选或手动输入它的子设备。保存后子设备不再单独显示卡片，只在宿主设置弹窗里以大卡片展示与控制。</p>
         <label className="settings-field">
-          <span>宿主设备{hostPool.length === 0 ? '（没有在线的灯 / 窗帘实体）' : ''}</span>
+          <span>宿主设备{hostPool.length === 0 ? '（没有已加入房间的灯 / 窗帘）' : ''}</span>
           <select value={hostId} onChange={(event) => changeHost(event.target.value)}>
             <option value="">选择宿主设备</option>
             {hostOptions.map((entity) => <option key={entity.id} value={entity.id}>{entity.name}（{entity.id}）</option>)}
@@ -560,8 +560,8 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
   const [editingSceneId, setEditingSceneId] = useState<string | null>(null);
   const [editingEntity, setEditingEntity] = useState<CatalogueEntity | null>(null);
   const [batteryAddOpen, setBatteryAddOpen] = useState(false);
-  // 子设备绑定弹窗：{} 新增（自选宿主），{ hostId } 编辑指定宿主。
-  const [childPicker, setChildPicker] = useState<{ hostId?: string } | null>(null);
+  // 子设备绑定弹窗：{} 新增（自选宿主），{ hostId } 编辑指定宿主；returnRoomId 表示从某个房间的「添加设备」弹窗进来，关闭后自动开回该弹窗。
+  const [childPicker, setChildPicker] = useState<{ hostId?: string; returnRoomId?: string } | null>(null);
 
   useEffect(() => {
     if (!connected) return;
@@ -971,7 +971,7 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
         <div className="custom-add-row">
           <button type="button" className="small-button small-button--selected" onClick={() => setChildPicker({})}><Plus size={15} />新增绑定</button>
         </div>
-        {childPicker && <ChildBindPicker entities={data.entities} custom={custom} initialHostId={childPicker.hostId} onClose={() => setChildPicker(null)} onSave={saveChildren} />}
+        {childPicker && <ChildBindPicker entities={data.entities} custom={custom} initialHostId={childPicker.hostId} onClose={() => { const back = childPicker.returnRoomId; setChildPicker(null); if (back) setPickerRoomId(back); }} onSave={saveChildren} />}
       </CollapsibleCard>
 
       <CollapsibleCard icon={Thermometer} title="温湿度来源">
@@ -1266,7 +1266,7 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
           searchId={searchId}
           onToggle={(entityId, checked) => toggleAssignment(entityId, pickerRoom.id, checked)}
           onEdit={setEditingEntity}
-          onBindChildren={(entity) => setChildPicker({ hostId: entity.id })}
+          onBindChildren={(entity) => { setPickerRoomId(null); setChildPicker({ hostId: entity.id, returnRoomId: pickerRoom.id }); }}
           onClose={() => setPickerRoomId(null)}
         />
       )}
@@ -1628,7 +1628,7 @@ function DevicePicker({ room, data, custom, searchId, onToggle, onEdit, onBindCh
                       <input type="checkbox" checked={inThisRoom} onChange={(event) => onToggle(entity.id, event.target.checked)} />
                       <span className="entity-filter__name">{displayName}</span>
                       <button type="button" className="icon-button entity-filter__edit" title="自定义名称与图标" aria-label={`自定义“${displayName}”的名称与图标`} onClick={(event) => { event.preventDefault(); onEdit(entity); }}><Pencil size={14} /></button>
-                      {(entity.domain === 'light' || entity.domain === 'cover') && !bound.owners.has(entity.id) && <button type="button" className="icon-button entity-filter__edit" title={bound.counts.get(entity.id) ? `编辑子设备绑定（现有 ${bound.counts.get(entity.id)} 个）` : '绑定子设备'} aria-label={`为“${displayName}”绑定子设备`} onClick={(event) => { event.preventDefault(); onBindChildren(entity); }}><Link2 size={14} /></button>}
+                      {(entity.domain === 'light' || entity.domain === 'cover') && Boolean(custom.assignments[entity.id]) && !bound.owners.has(entity.id) && <button type="button" className="icon-button entity-filter__edit" title={bound.counts.get(entity.id) ? `编辑子设备绑定（现有 ${bound.counts.get(entity.id)} 个）` : '绑定子设备'} aria-label={`为“${displayName}”绑定子设备`} onClick={(event) => { event.preventDefault(); onBindChildren(entity); }}><Link2 size={14} /></button>}
                       <span className="entity-filter__kind">{entityKindLabel(entity)}</span>
                       {bound.counts.has(entity.id) && <span className="entity-filter__tag">{bound.counts.get(entity.id)} 个子设备</span>}
                       {elsewhere && <span className="entity-filter__tag">在「{elsewhere}」</span>}
