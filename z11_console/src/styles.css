@@ -346,8 +346,6 @@ strong { font-weight: 600; }
 /* 两列标题强制等高：隐藏窄列里会换行的提示文字（与手机端一致），并以按钮高度为统一基准，保证下方卡片行顶对齐。 */
 .home-duo-row .section-heading { min-height: 32px; }
 .home-duo-row .section-heading > span, .home-duo-row .section-heading__actions > span { display: none; }
-/* 卡片不放大时整行可能窄于列宽：居中摆放避免左侧一大片空白。 */
-.adaptive-grid--single-row { justify-content: center; }
 @media (max-width: 720px) {
   .home-duo-row, .home-duo-row--solo { grid-template-columns: 1fr; row-gap: 14px; }
 }
