@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
 import { Eye, Maximize, Minimize, Pencil, PersonStanding, Snowflake, Sun, Power, RotateCcw, Settings, Star } from 'lucide-react';
-import { AdaptiveGrid } from './components/AdaptiveGrid';
+import { AdaptiveGrid, SingleRowGrid } from './components/AdaptiveGrid';
 import { ActiveDevicesDialog } from './components/ActiveDevicesDialog';
 import type { ActiveListRequest } from './components/ActiveDevicesDialog';
 import { BatteryDialog } from './components/BatteryDialog';
@@ -153,6 +153,14 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
     const root = document.documentElement;
     root.style.setProperty('--time-scale', localStorage.getItem('z11.scale.time') ?? '1');
     root.style.setProperty('--weather-scale', localStorage.getItem('z11.scale.weather') ?? '1');
+  }, []);
+
+  // 主页版面（本机保存）：classic 经典上下排布；duo 摄像头与常用设备同排（4:6），常用单排自动缩放。
+  const [homeDuo, setHomeDuo] = useState(() => localStorage.getItem('z11.homeLayout') === 'duo');
+  useEffect(() => {
+    const sync = () => setHomeDuo(localStorage.getItem('z11.homeLayout') === 'duo');
+    window.addEventListener('z11-home-layout', sync);
+    return () => window.removeEventListener('z11-home-layout', sync);
   }, []);
 
   // HAOS Ingress 沉浸模式：隐藏 HA 自身的侧边栏与顶栏；页面加载时恢复上次状态。
@@ -432,6 +440,10 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
     });
   }
 
+  // 同排版面：常用卡片强制单排，需要每张卡的列跨度（1×1 为 1、2×1 为 2）来计算整体缩放。
+  const favoriteSpans = favoriteDevices.map((device) => tileSizeForDevice(device, layout.sizes[favoriteSizeKey(device.id)]) === '2x1' ? 2 : 1);
+  const duoActive = homeDuo && favoriteDevices.length > 0;
+
   /** “正在运行”用于查看和顺手关掉，统一用单格；只能双格的（播放器）保持默认。 */
   function runningCard(device: Device) {
     return card(device, roomOf(device), { size: allowedSizesForDevice(device).includes('1x1') ? '1x1' : tileSizeForDevice(device) });
@@ -527,18 +539,39 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
               <span className="home-date-card__day">{homeClockParts.monthDay}</span>
               <span className="home-date-card__weekday">{homeClockParts.weekday}</span>
             </div>
-            {homeCameras.length > 0 && <CameraBoard title="摄像头" cameras={homeCameras} scale={tileScale} go2rtcEnabled={server.status?.go2rtc?.enabled ?? false} />}
-            {homeScenes.length > 0 && <SceneBoard title="常用情景" scenes={homeScenes} entities={server.catalogue?.entities ?? []} pendingId={pendingSceneId} onRun={runScene} />}
-            <div className="section-heading">
-              <h2>常用设备</h2>
-              <div className="section-heading__actions">
-                <span>{!canControl ? '只读模式，设备操作不会执行' : editingLayout ? '拖动调整顺序，右下角切换尺寸，点 ★ 移出常用' : '在房间“编辑布局”里点 ☆ 加入常用'}</span>
-                {canControl && (favoriteDevices.length > 0 || editingLayout) && editButton}
-              </div>
-            </div>
-            {favoriteDevices.length > 0
-              ? <AdaptiveGrid className="tile-grid tile-grid--quick" scale={tileScale}>{favoriteDevices.map(favoriteCard)}</AdaptiveGrid>
-              : <div className="empty-room"><span className="tile__chip"><Star size={20} /></span><p>还没有常用设备。进入房间点“编辑布局”，给设备点 ☆ 即可加入。</p></div>}
+            {duoActive ? (
+              <>
+                <div className={`home-duo-row${homeCameras.length === 0 ? ' home-duo-row--solo' : ''}`}>
+                  {homeCameras.length > 0 && <CameraBoard title="摄像头" cameras={homeCameras} scale={tileScale} go2rtcEnabled={server.status?.go2rtc?.enabled ?? false} />}
+                  <div className="home-duo-row__favorites">
+                    <div className="section-heading">
+                      <h2>常用设备</h2>
+                      <div className="section-heading__actions">
+                        <span>{!canControl ? '只读模式，设备操作不会执行' : editingLayout ? '拖动调整顺序，右下角切换尺寸，点 ★ 移出常用' : '在房间“编辑布局”里点 ☆ 加入常用'}</span>
+                        {canControl && editButton}
+                      </div>
+                    </div>
+                    <SingleRowGrid className="tile-grid--quick" spans={favoriteSpans}>{favoriteDevices.map(favoriteCard)}</SingleRowGrid>
+                  </div>
+                </div>
+                {homeScenes.length > 0 && <SceneBoard title="常用情景" scenes={homeScenes} entities={server.catalogue?.entities ?? []} pendingId={pendingSceneId} onRun={runScene} />}
+              </>
+            ) : (
+              <>
+                {homeCameras.length > 0 && <CameraBoard title="摄像头" cameras={homeCameras} scale={tileScale} go2rtcEnabled={server.status?.go2rtc?.enabled ?? false} />}
+                {homeScenes.length > 0 && <SceneBoard title="常用情景" scenes={homeScenes} entities={server.catalogue?.entities ?? []} pendingId={pendingSceneId} onRun={runScene} />}
+                <div className="section-heading">
+                  <h2>常用设备</h2>
+                  <div className="section-heading__actions">
+                    <span>{!canControl ? '只读模式，设备操作不会执行' : editingLayout ? '拖动调整顺序，右下角切换尺寸，点 ★ 移出常用' : '在房间“编辑布局”里点 ☆ 加入常用'}</span>
+                    {canControl && (favoriteDevices.length > 0 || editingLayout) && editButton}
+                  </div>
+                </div>
+                {favoriteDevices.length > 0
+                  ? <AdaptiveGrid className="tile-grid tile-grid--quick" scale={tileScale}>{favoriteDevices.map(favoriteCard)}</AdaptiveGrid>
+                  : <div className="empty-room"><span className="tile__chip"><Star size={20} /></span><p>还没有常用设备。进入房间点“编辑布局”，给设备点 ☆ 即可加入。</p></div>}
+              </>
+            )}
             <div className="section-heading section-heading--spaced">
               <h2>正在运行</h2>
               <div className="section-heading__actions">

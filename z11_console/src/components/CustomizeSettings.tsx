@@ -28,6 +28,7 @@ const ONVIF_HOST_RE = /^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,126}[A-Za-z0-9])?$/;
 /** 主页缩放偏好保存在本机（localStorage），只影响当前屏幕，不进服务端配置。 */
 const SCALE_KEY_TIME = 'z11.scale.time';
 const SCALE_KEY_WEATHER = 'z11.scale.weather';
+const HOME_LAYOUT_KEY = 'z11.homeLayout';
 function writeScale(kind: 'time' | 'weather', value: number) {
   localStorage.setItem(kind === 'time' ? SCALE_KEY_TIME : SCALE_KEY_WEATHER, String(value));
   document.documentElement.style.setProperty(kind === 'time' ? '--time-scale' : '--weather-scale', String(value));
@@ -813,6 +814,14 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
   const [timeScale, setTimeScale] = useState(() => Number(localStorage.getItem(SCALE_KEY_TIME)) || 1);
   const [weatherScale, setWeatherScale] = useState(() => Number(localStorage.getItem(SCALE_KEY_WEATHER)) || 1);
 
+  // ---- 主页版面（本机生效）：classic 经典上下排布；duo 摄像头+常用同排（4:6）----
+  const [homeLayout, setHomeLayout] = useState<'classic' | 'duo'>(() => (localStorage.getItem(HOME_LAYOUT_KEY) === 'duo' ? 'duo' : 'classic'));
+  function writeHomeLayout(mode: 'classic' | 'duo') {
+    localStorage.setItem(HOME_LAYOUT_KEY, mode);
+    setHomeLayout(mode);
+    window.dispatchEvent(new Event('z11-home-layout'));
+  }
+
   // ---- 电量传感器偏好 ----
   function nextBattery(partial: Partial<NonNullable<CustomConfig['battery']>>) {
     return { ...(custom!.battery ?? {}), ...partial };
@@ -1025,6 +1034,13 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
 
       <CollapsibleCard icon={ZoomIn} title="主页显示">
         <p className="settings-message">调整首页时间与天气卡片的大小，仅对当前这块屏幕生效（保存在本机）。</p>
+        <div className="settings-row">
+          <span><strong>主页版面</strong><small style={{ display: 'block', color: 'var(--text-2)', fontSize: '12px', fontWeight: 400 }}>「同排」把摄像头与常用设备放在同一行（约 4:6），常用卡片单排自动缩放不换行；「经典」为原来的上下排布。</small></span>
+          <span style={{ display: 'flex', gap: 8, flex: 'none' }}>
+            <button type="button" className={`small-button${homeLayout === 'classic' ? ' small-button--selected' : ''}`} onClick={() => writeHomeLayout('classic')} aria-pressed={homeLayout === 'classic'}>经典</button>
+            <button type="button" className={`small-button${homeLayout === 'duo' ? ' small-button--selected' : ''}`} onClick={() => writeHomeLayout('duo')} aria-pressed={homeLayout === 'duo'}>同排</button>
+          </span>
+        </div>
         <div className="settings-row">
           <span><strong>时间缩放</strong><small style={{ display: 'block', color: 'var(--text-2)', fontSize: '12px', fontWeight: 400 }}>首页大时钟的显示倍率。</small></span>
           <span className="scale-slider">

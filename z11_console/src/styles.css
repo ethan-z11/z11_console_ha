@@ -337,6 +337,16 @@ strong { font-weight: 600; }
 /* ---------- 摄像头（RTSP → MJPEG） ---------- */
 .camera-board { margin-bottom: 22px; }
 
+/* 主页「摄像头 + 常用设备」同排版面：左 4 右 6；常用卡片由 SingleRowGrid 单排整体缩放。
+   没有摄像头时常用区独占整行；窄屏退化为上下排。 */
+.home-duo-row { display: grid; grid-template-columns: 4fr 6fr; column-gap: 18px; align-items: start; margin-bottom: 22px; }
+.home-duo-row--solo { grid-template-columns: 1fr; }
+.home-duo-row > .camera-board { margin-bottom: 0; }
+.home-duo-row__favorites { min-width: 0; }
+@media (max-width: 720px) {
+  .home-duo-row, .home-duo-row--solo { grid-template-columns: 1fr; row-gap: 14px; }
+}
+
 /* 通用画面区：卡片预览铺满裁剪，弹窗大画面完整显示 */
 .camera-stream { position: relative; overflow: hidden; background: #0c1014; }
 .camera-stream img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
