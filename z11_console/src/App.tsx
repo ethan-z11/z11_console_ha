@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
-import { Eye, Pencil, PersonStanding, Snowflake, Sun, Power, RotateCcw, Settings, Star } from 'lucide-react';
+import { Eye, Maximize, Minimize, Pencil, PersonStanding, Snowflake, Sun, Power, RotateCcw, Settings, Star } from 'lucide-react';
 import { AdaptiveGrid } from './components/AdaptiveGrid';
 import { ActiveDevicesDialog } from './components/ActiveDevicesDialog';
 import type { ActiveListRequest } from './components/ActiveDevicesDialog';
@@ -25,6 +25,7 @@ import { allowedSizesForDevice, favoriteIds, favoriteSizeKey, fromServerLayout, 
 import { getRoomDevices, isClimate, isLit, isRunning, sortRunning } from './selectors';
 import { sceneDisplayName, sceneTargetService } from './haAdapter';
 import { formatDateParts, formatTime, homeGreeting, useNow } from './time';
+import { isIngress, kioskOn, restoreKiosk, setKiosk } from './kiosk';
 import type { Device, DeviceActions, LayoutState, Room, TileSize } from './types';
 import { useConsole } from './useConsole';
 import { readOnlyActions, useHome } from './useHome';
@@ -153,6 +154,15 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
     root.style.setProperty('--time-scale', localStorage.getItem('z11.scale.time') ?? '1');
     root.style.setProperty('--weather-scale', localStorage.getItem('z11.scale.weather') ?? '1');
   }, []);
+
+  // HAOS Ingress 沉浸模式：隐藏 HA 自身的侧边栏与顶栏；页面加载时恢复上次状态。
+  const [kiosk, setKioskState] = useState(kioskOn());
+  useEffect(() => { restoreKiosk(); }, []);
+  function toggleKiosk() {
+    const next = !kiosk;
+    setKiosk(next);
+    setKioskState(next);
+  }
 
   // 紧凑桌面分辨率（如 1000×595）：页头操作组移到时间与药丸之间，避免被天气卡遮挡。
   const compactQuery = '(min-width: 900px) and (max-width: 1100px) and (min-height: 520px) and (max-height: 680px)';
@@ -467,6 +477,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
       {!canControl && <span className="demo-flag demo-flag--readonly"><Eye size={14} />只读模式</span>}
       <ConnectionBadge quiet={page !== 'home'} connected={server.connected} status={server.status} staleSince={server.staleSince} offlineSince={server.offlineSince} now={now} />
       {!live && <button type="button" className="text-button" onClick={resetDemo} aria-label="重置演示设备状态"><RotateCcw size={15} />重置演示</button>}
+      {isIngress && <button type="button" className="icon-button" onClick={toggleKiosk} aria-pressed={kiosk} aria-label={kiosk ? '退出沉浸模式' : '沉浸模式'} title={kiosk ? '退出沉浸模式（显示 HA 侧边栏与顶栏）' : '沉浸模式（隐藏 HA 侧边栏与顶栏）'}>{kiosk ? <Minimize size={18} /> : <Maximize size={18} />}</button>}
       <button type="button" className="icon-button hero__settings" onClick={requestSettings} aria-current={page === 'settings' ? 'page' : undefined} aria-label="设置" title="设置"><Settings size={18} /></button>
     </div>
   );
