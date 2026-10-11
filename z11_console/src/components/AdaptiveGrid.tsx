@@ -60,8 +60,8 @@ export function SingleRowGrid({ children, spans, className = '' }: { children: R
 
   const units = spans.reduce((sum, span) => sum + (span === 2 ? 2 : 1), 0);
   const natural = units * baseCellSize + (spans.length - 1) * baseGap;
-  // 上限 1.5：常用设备很少时不至于放大得离谱。
-  const scale = width > 0 && natural > 0 ? Math.min(1.5, width / natural) : 1;
+  // 卡片只缩不放：宽度富余时保持原尺寸（上限 1），空间不够时整体等比缩小，绝不放大超过 146px 基准。
+  const scale = width > 0 && natural > 0 ? Math.min(1, width / natural) : 1;
   const style = {
     '--grid-columns': units,
     '--cell-size': `${baseCellSize * scale}px`,
