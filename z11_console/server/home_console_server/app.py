@@ -182,6 +182,14 @@ def normalize_embed_url(value: str) -> str | None:
 class ConsoleServer:
     def __init__(self, data_dir: Path) -> None:
         self.store = Store(data_dir)
+        # HAOS 加载项：Supervisor 注入 SUPERVISOR_TOKEN，自动直连本机 HA，无需手动填地址与令牌。
+        # 令牌随容器重建轮换，每次启动以注入值为准；compose 直连部署没有该环境变量，配置走设置页。
+        if supervisor_token := os.environ.get("SUPERVISOR_TOKEN"):
+            if not self.store.settings.ha_url:
+                self.store.settings.ha_url = "http://supervisor/core"
+            self.store.settings.data_source = "live"
+            self.store.set_token(supervisor_token)
+            self.store.save()
         # 会话持久化到 sessions.json：重启后浏览器复用 Cookie 免重新登录。
         self.sessions = Sessions(self.store.sessions_path)
         self.limiter = LoginLimiter()
