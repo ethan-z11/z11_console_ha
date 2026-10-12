@@ -47,6 +47,7 @@ log = logging.getLogger("home_console_server")
 SERVER_DIR = Path(__file__).resolve().parent.parent
 COOKIE = "hc_session"  # 会话 Cookie 名（账户系统替换原 hc_admin PIN Cookie）
 SESSION_MAX_AGE = 30 * 24 * 3600  # 记住登录：Cookie 30 天
+ADMIN_GRANT_MAX_AGE = 60 * 60  # Ingress 侧边栏访客的管理员验证：临时会话 1 小时，到期自动回到访客身份
 EMPTY_CATALOGUE: dict[str, Any] = {"labels": [], "rooms": [], "entities": []}
 REFRESH_DELAY = 0.5
 
@@ -181,14 +182,6 @@ def normalize_embed_url(value: str) -> str | None:
 class ConsoleServer:
     def __init__(self, data_dir: Path) -> None:
         self.store = Store(data_dir)
-        # HAOS 加载项：Supervisor 注入 SUPERVISOR_TOKEN，自动直连本机 HA，无需手动填地址与令牌。
-        # 令牌随容器重建轮换，每次启动以注入值为准；用户已在设置页改过地址时保留。
-        if supervisor_token := os.environ.get("SUPERVISOR_TOKEN"):
-            if not self.store.settings.ha_url:
-                self.store.settings.ha_url = "http://supervisor/core"
-            self.store.settings.data_source = "live"
-            self.store.set_token(supervisor_token)
-            self.store.save()
         # 会话持久化到 sessions.json：重启后浏览器复用 Cookie 免重新登录。
         self.sessions = Sessions(self.store.sessions_path)
         self.limiter = LoginLimiter()
@@ -809,7 +802,8 @@ class ConsoleServer:
                 return web.json_response({"error": "尝试次数过多", "retryAfter": locked}, status=429)
             return web.json_response({"error": "账号或密码不正确", "remaining": self.limiter.remaining_attempts()}, status=401)
         self.limiter.record_success()
-        self.store.audit("login", ip, username=account.username)
+        # Ingress 侧边栏访客验证管理员只发临时会话：审计里单独标记。
+        self.store.audit("login", ip, username=account.username, temporary=_is_ingress_request(request))
         session_id = self.sessions.create(account.username, account.is_admin, remember=remember)
         response = web.json_response({
             "ok": True,
@@ -818,7 +812,8 @@ class ConsoleServer:
             "setupCompleted": self.store.setup_completed,
         })
         # Cookie path 设为 "/"：WS 握手、摄像头流、天气等 /api/* 接口都需要带上。
-        max_age = SESSION_MAX_AGE if remember else None
+        # Ingress 侧边栏访客验证管理员时只发 1 小时临时会话：不随 remember 变成长效登录，到期自动回到访客身份。
+        max_age = ADMIN_GRANT_MAX_AGE if _is_ingress_request(request) else (SESSION_MAX_AGE if remember else None)
         response.set_cookie(COOKIE, session_id, **_cookie_attrs(request), max_age=max_age)
         return response
 
@@ -1007,12 +1002,13 @@ class ConsoleServer:
                 settings.music_url = music_url
                 changed.append("musicUrl")
         if "go2rtcUrl" in body:
-            go2rtc_url = normalize_base(str(body["go2rtcUrl"]))
+            raw_url = str(body["go2rtcUrl"]).strip()
+            go2rtc_url = normalize_base(raw_url)
             if go2rtc_url is None:
                 return web.json_response({"error": "go2rtc 地址需是完整的 http:// 或 https:// 网址"}, status=400)
             if len(go2rtc_url) > 300:
                 return web.json_response({"error": "go2rtc 地址过长"}, status=400)
-            # 非空地址保存前必须连得上，避免前端 iframe 静默黑屏；清空则随时允许。
+            # 保存前先探测，避免存了一个连不上的地址导致摄像头全挂。
             if go2rtc_url:
                 try:
                     await check(go2rtc_url)
@@ -1308,7 +1304,7 @@ def create_app(data_dir: Path, static_dir: Path | None) -> web.Application:
         web.post("/api/camera-ptz", console.camera_ptz),
         web.get("/api/camera-shots", console.camera_shots),
         web.get("/api/camera-shot", console.camera_shot),
-        # go2rtc 低延迟流媒体：流注册 / 地址探测 / 播放器静态文件 + WS 反向代理。
+        # go2rtc 低延迟流媒体：流注册 + 播放器静态文件/WS 的同源反向代理（须排在 SPA 通配之前）。
         web.get("/api/go2rtc-ensure", console.go2rtc_ensure),
         web.post("/api/admin/go2rtc-detect", console.go2rtc_detect),
         web.get("/go2rtc/api/ws", console.go2rtc_ws),

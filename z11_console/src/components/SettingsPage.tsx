@@ -2,7 +2,7 @@ import { Cctv, DoorOpen, Grid2x2, History, House, KeyRound, LayoutTemplate, List
 import { useEffect, useId, useState } from 'react';
 import type { CSSProperties, FormEvent, KeyboardEvent } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { apiPath, ApiError, changePassword, createAccount, deleteAccount, getAccounts, getAudit, getCustom, getEntities, getSettings, login as loginApi, request, updateSettings, uploadPeopleImage } from '../consoleApi';
+import { ApiError, changePassword, createAccount, deleteAccount, getAccounts, getAudit, getCustom, getEntities, getSettings, login as loginApi, request, updateSettings, uploadPeopleImage } from '../consoleApi';
 import type { AccountInfo, AdminSettings, AuditEntry, DiscoveredEntities, PersonConfig } from '../consoleApi';
 import type { CustomConfig } from '../consoleClient';
 import type { ServerStatus } from '../consoleClient';
@@ -426,7 +426,7 @@ export function SettingsPage({ status, user, ingress, firstRun, onLogout, onAuth
             </label>
             <div className="settings-actions">
               <button type="submit" className="small-button small-button--selected">保存</button>
-              <button type="button" className="small-button" disabled={go2rtcBusy} onClick={detectGo2rtc}>{go2rtcBusy ? '检测中…' : '自动发现 / 测试地址'}</button>
+              <button type="button" className="small-button" disabled={go2rtcBusy} onClick={detectGo2rtc}>{go2rtcBusy ? '检测中…' : '测试地址'}</button>
               <FormMessage message={go2rtcMessage} />
             </div>
           </form>
@@ -790,7 +790,7 @@ function LoginSection({ user, ingress, onLogout, onAuthenticated }: {
       <div className="settings-card__heading"><span className="tile__chip"><ShieldCheck size={20} /></span><div>
         <h3>管理员验证</h3>
         <p>{ingress
-          ? '侧边栏访问已由 Home Assistant 完成登录认证，可直接查看和控制设备；修改设置需要再验证管理员账号。'
+          ? '侧边栏访问已由 Home Assistant 完成登录认证，可直接查看和控制设备；修改设置需要再验证管理员账号，验证 1 小时后过期，需重新验证。'
           : '当前账户没有设置权限；输入管理员账号验证后可修改设置。'}</p>
       </div></div>
       <div className="settings-row">
@@ -914,7 +914,7 @@ function PeopleSettings({ settings, onSettings, onExpired, discovered }: {
           {people.map((person) => (
             <div key={person.id} className="people-config-item">
               <div className="people-config-item__avatar">
-                <img src={apiPath(person.image ? `/api/people-images/${person.image}` : `/api/people-images/default_${people.indexOf(person) % 2}.jpg`)} alt={person.name} />
+                <img src={person.image ? `/api/people-images/${person.image}` : `/api/people-images/default_${people.indexOf(person) % 2}.jpg`} alt={person.name} />
                 <label className="people-config-item__upload" title="更换头像">
                   <Upload size={12} />
                   <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file) void handleUpload(person.id, file); }} disabled={uploading} />

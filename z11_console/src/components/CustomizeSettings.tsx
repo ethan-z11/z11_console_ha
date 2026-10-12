@@ -29,6 +29,7 @@ const ONVIF_HOST_RE = /^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,126}[A-Za-z0-9])?$/;
 const SCALE_KEY_TIME = 'z11.scale.time';
 const SCALE_KEY_WEATHER = 'z11.scale.weather';
 const HOME_LAYOUT_KEY = 'z11.homeLayout';
+const COMPACT_LAYOUT_KEY = 'z11.compactLayout';
 function writeScale(kind: 'time' | 'weather', value: number) {
   localStorage.setItem(kind === 'time' ? SCALE_KEY_TIME : SCALE_KEY_WEATHER, String(value));
   document.documentElement.style.setProperty(kind === 'time' ? '--time-scale' : '--weather-scale', String(value));
@@ -822,6 +823,14 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
     window.dispatchEvent(new Event('z11-home-layout'));
   }
 
+  // ---- 紧凑排版（本机生效）：任意分辨率强制启用紧凑桌面排版（页头压缩、操作并入药丸行）----
+  const [compactLayout, setCompactLayout] = useState(() => localStorage.getItem(COMPACT_LAYOUT_KEY) === '1');
+  function writeCompactLayout(enabled: boolean) {
+    localStorage.setItem(COMPACT_LAYOUT_KEY, enabled ? '1' : '0');
+    setCompactLayout(enabled);
+    window.dispatchEvent(new Event('z11-compact-layout'));
+  }
+
   // ---- 电量传感器偏好 ----
   function nextBattery(partial: Partial<NonNullable<CustomConfig['battery']>>) {
     return { ...(custom!.battery ?? {}), ...partial };
@@ -1040,6 +1049,10 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
             <button type="button" className={`small-button${homeLayout === 'classic' ? ' small-button--selected' : ''}`} onClick={() => writeHomeLayout('classic')} aria-pressed={homeLayout === 'classic'}>经典</button>
             <button type="button" className={`small-button${homeLayout === 'duo' ? ' small-button--selected' : ''}`} onClick={() => writeHomeLayout('duo')} aria-pressed={homeLayout === 'duo'}>同排</button>
           </span>
+        </div>
+        <div className="settings-row">
+          <span><strong>紧凑排版</strong><small style={{ display: 'block', color: 'var(--text-2)', fontSize: '12px', fontWeight: 400 }}>在任意分辨率下启用紧凑桌面排版：隐藏问候语与日期卡片、页头压缩、操作与状态药丸合并单行。默认仅在紧凑桌面分辨率（如 1000×595）自动启用。</small></span>
+          <button type="button" role="switch" className="settings-switch" aria-checked={compactLayout} aria-label="紧凑排版" onClick={() => writeCompactLayout(!compactLayout)}><span /></button>
         </div>
         <div className="settings-row">
           <span><strong>时间缩放</strong><small style={{ display: 'block', color: 'var(--text-2)', fontSize: '12px', fontWeight: 400 }}>首页大时钟的显示倍率。</small></span>

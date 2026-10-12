@@ -290,17 +290,15 @@ strong { font-weight: 600; }
   .home-date-card { display: flex; }
 }
 
-/* 1000×595 等紧凑桌面分辨率：隐藏问候语与日期卡片，让时间 / 天气 / 药丸更突出 */
-@media (min-width: 900px) and (max-width: 1100px) and (min-height: 520px) and (max-height: 680px) {
-  .hero__brand { display: none; }
-  .home-date-card { display: none; }
-  /* 时间顶部与天气卡 top:14px 对齐：去掉 hero__title 的 30px 上边距，hero padding-top 减到 14px */
-  .hero--home { padding-top: 14px; }
-  .hero--home .hero__title { margin-top: 0; }
-  /* hero 不再固定 232px 高度，内容自然结束，下方板块往上靠 */
-  .hero--home { min-height: 0 !important; }
-  .hero__body { align-items: flex-start; }
-}
+/* 紧凑桌面排版（JS 依据分辨率自动启用，或设置 → 主页显示手动开关）：隐藏问候语与日期卡片，让时间 / 天气 / 药丸更突出 */
+.app-shell--compact .hero__brand { display: none; }
+.app-shell--compact .home-date-card { display: none; }
+/* 时间顶部与天气卡 top:14px 对齐：去掉 hero__title 的上边距，hero padding-top 减到 14px */
+.app-shell--compact .hero--home { padding-top: 14px; }
+.app-shell--compact .hero--home .hero__title { margin-top: 0; }
+/* hero 不再固定 232px 高度，内容自然结束，下方板块往上靠（类特异性高于后文的 min-height 基础规则） */
+.app-shell--compact .hero--home { min-height: 0; }
+.app-shell--compact .hero__body { align-items: flex-start; }
 /* 紧凑模式：操作组与状态药丸合并单行排列 */
 .hero__pills-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .hero__pills-row > .hero__actions { justify-content: flex-start; margin: 0; flex-wrap: nowrap; flex-shrink: 0; }
@@ -1214,10 +1212,8 @@ strong { font-weight: 600; }
 .hero--home { --weather-w: min(calc((100vw - 196px) * .6), 860px); }
 .hero--home .hero__main { padding-right: calc(var(--weather-w) + 30px); }
 .hero--home > .weather-hero { position: absolute; top: 14px; right: calc(var(--gutter) - 16px); bottom: 8px; z-index: 1; width: var(--weather-w); max-width: none; margin: 0; padding: 14px 22px 16px; justify-content: space-between; }
-/* 紧凑桌面分辨率：天气卡高度自适应内容，缩放滑杆能同时改变宽高（必须在此规则之后覆盖 bottom:8px） */
-@media (min-width: 900px) and (max-width: 1100px) and (min-height: 520px) and (max-height: 680px) {
-  .hero--home > .weather-hero { bottom: auto; height: auto; }
-}
+/* 紧凑桌面排版：天气卡高度自适应内容，缩放滑杆能同时改变宽高（类特异性高于上一行 bottom:8px 基础规则） */
+.app-shell--compact .hero--home > .weather-hero { bottom: auto; height: auto; }
 /* 平板窄栏：侧栏 84px */
 @media (max-width: 1100px) { .hero--home { --weather-w: calc((100vw - 84px) * .6); } }
 /* 手机：大天气卡隐藏（用标题行紧凑天气），预留取消 */

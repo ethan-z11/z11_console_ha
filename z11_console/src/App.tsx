@@ -182,6 +182,15 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
     return () => mq.removeEventListener('change', handler);
   }, []);
 
+  // 紧凑排版开关（本机保存）：任意分辨率强制启用紧凑桌面排版（设置 → 自定义 → 主页显示）。
+  const [compactForced, setCompactForced] = useState(() => localStorage.getItem('z11.compactLayout') === '1');
+  useEffect(() => {
+    const sync = () => setCompactForced(localStorage.getItem('z11.compactLayout') === '1');
+    window.addEventListener('z11-compact-layout', sync);
+    return () => window.removeEventListener('z11-compact-layout', sync);
+  }, []);
+  const compactActive = compactHome || compactForced;
+
   // 后端推来的共用布局（首次连接或其他屏幕修改后）直接采用。
   useEffect(() => {
     if (!server.layout) return;
@@ -495,13 +504,13 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
   );
 
   return (
-    <div className="app-shell">
+    <div className={compactActive ? 'app-shell app-shell--compact' : 'app-shell'}>
       <SideNav home={home} homeTitle={homeTitle} current={page === 'room' ? { roomId: selectedRoom.id } : page} now={now} onHome={openHome} onOpenRoom={openRoom} onSettings={requestSettings} onEditRooms={canControl ? () => setRoomOrderOpen(true) : undefined} onOpenMusic={musicUrl ? openMusic : undefined} people={server.status?.people} occupancy={occupancy} brandTitle={server.status?.brandTitle} />
       <header className={`hero${page === 'home' ? ' hero--home' : ''}${page === 'settings' ? ' hero--settings' : ''}${heroTone ? ` hero--weather weather--${heroTone}` : ''}`}>
         {page === 'room' && <RoomScene key={selectedRoom.id} room={selectedRoom} lit={selectedRoomLitCount > 0} />}
         <div className="hero__top">
           <span className="hero__brand">{homeGreeting(now)}</span>
-          {(!compactHome || page !== 'home') && heroActions}
+          {(!compactActive || page !== 'home') && heroActions}
         </div>
         <div className={`hero__body ${enterClass}`} key={pageKey}>
           <div className="hero__main">
@@ -516,7 +525,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
               </div>
               {page === 'home' && <WeatherCompact weather={weather} onOpen={() => setWeatherOpen(true)} />}
             </div>
-            {compactHome && page === 'home' ? (
+            {compactActive && page === 'home' ? (
               <div className="hero__pills-row">
                 {heroActions}
                 <HomeStatusSummary home={home} onOpen={setActiveList} onOpenBattery={() => setBatteryOpen(true)} batteryEnabled={server.custom?.battery?.enabled !== false} />

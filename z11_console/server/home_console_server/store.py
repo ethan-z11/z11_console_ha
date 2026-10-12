@@ -91,8 +91,7 @@ METRIC_NAMES = ("temperature", "humidity")
 # 房间有人传感器：每个作用域（主页 home / 房间）最多选择的实体数；多个为“或”关系，任一触发即有人。
 CUSTOM_OCCUPANCY_PER_SCOPE = 10
 OCCUPANCY_DOMAINS = ("binary_sensor", "sensor")
-# 子设备绑定（灯 / 窗帘）：每个宿主最多绑定的子设备数；子设备不单独显示卡片。
-CUSTOM_CHILDREN_PER_HOST = 12
+# 子设备绑定（灯 / 窗帘）：子设备不单独显示卡片，只在宿主设置弹窗里展示；数量不限。
 CHILD_HOST_DOMAINS = ("light", "cover")
 # binary_sensor 统一按 on 判断；sensor 实体的状态值命中其中任一（小写比较）即视为有人。
 OCCUPIED_STATES = {"on", "home", "true", "1", "yes", "occupied", "present", "有人"}
@@ -369,8 +368,6 @@ def clean_custom(raw: Any, known_rooms: set[str] | None = None, known_entities: 
             continue
         picked: list[str] = []
         for entity_id in child_list:
-            if len(picked) >= CUSTOM_CHILDREN_PER_HOST:
-                break
             if not isinstance(entity_id, str) or not ENTITY_ID_RE.fullmatch(entity_id):
                 continue
             if entity_id == host_id or entity_id in picked or entity_id in child_owner or entity_id in children:
