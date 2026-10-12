@@ -33,7 +33,7 @@ from .auth import LoginLimiter, Sessions
 from .automations import DOMAIN as AUTOMATION_DOMAIN, build_automations, demo_automations
 from .cameras import BOUNDARY as CAMERA_BOUNDARY, CameraStreamer
 from .discovery import SCENE_DOMAINS, build_catalogue, filtered, visible_ids
-from .go2rtc import ADDON_CANDIDATES, PLAYER_MODES, check, detect, ensure_stream, normalize_base, player_modes, proxy_static, proxy_ws
+from .go2rtc import ADDON_CANDIDATES, PLAYER_MODES_TAIL, check, detect, ensure_stream, normalize_base, player_modes, proxy_static, proxy_ws
 from .ha import HaUpstream
 from .motion import PTZ_DIRECTIONS, MotionScreenshotter
 from .onvif import OnvifError, OnvifManager
@@ -330,7 +330,7 @@ class ConsoleServer:
                 "weatherPlace": settings.weather_place,
                 "people": self._people_status(),
                 "occupancy": self._occupancy_status(),
-                "go2rtc": {"enabled": bool(settings.go2rtc_url), "modes": PLAYER_MODES},
+                "go2rtc": {"enabled": bool(settings.go2rtc_url), "modes": PLAYER_MODES_TAIL},
                 "ha": self.upstream.status}
 
     def public_custom(self) -> dict[str, Any]:

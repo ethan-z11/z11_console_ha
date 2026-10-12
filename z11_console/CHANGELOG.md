@@ -1,5 +1,9 @@
 # 更新日志
 
+## 1.0.68
+
+- 摄像头播放回退链支持 WebRTC/TCP：后端分别探测 go2rtc 8555 的 UDP 与 TCP，UDP 不通但 TCP 可达时仍下发 webrtc/tcp 模式（对齐 AlexxIT/WebRTC 卡片行为，MSE 兜底不再提前接管）
+
 ## 1.0.67
 
 - 修复 1.0.66 引入的「HA 令牌无效：Invalid access」：恢复加载项启动时用 Supervisor 注入的 SUPERVISOR_TOKEN 刷新令牌（1.0.66 同步代码时误删，导致用了容器重建前的旧令牌）
