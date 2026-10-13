@@ -42,6 +42,113 @@ PLAYER_MODES_TAIL = "mse,hls,mp4,mjpeg"
 # 否则播放器把 webrtc 与 mse 绑在同一条 WS 上协商，webrtc 失败会拖垮 mse 报 "streams: EOF"。
 WEBRTC_PORT = 8555
 
+# 替换 go2rtc 自带 video-stream.js 的补丁版：官方 onpcvideo 会比较 rtc/mse 优先级
+# （video-rtc.js：「Video+Audio > Video, H265 > H264, WebRTC > MSE」）。摄像头 RTSP 源带 AAC
+# 音频时 MSE 是「H264+AAC」(0x311)，WebRTC 带不了 AAC 只有「H264 视频」(0x220)，按官方规则
+# 永远输给 MSE——表现就是明明 ICE 连得上却一直显示 MSE（AlexxIT/WebRTC 卡片的旧版播放器没有
+# 这段比较，所以 HA 卡片能出 RTC 而我们出不了）。改成与卡片一致：WebRTC 真正出画面就切 RTC
+# （低延迟优先），出不了画面时 MSE 继续兜底，行为与官方回退链无差别。
+PATCHED_VIDEO_STREAM_JS = """import {VideoRTC} from './video-rtc.js';
+
+class VideoStream extends VideoRTC {
+    set divMode(value) {
+        this.querySelector('.mode').innerText = value;
+        this.querySelector('.status').innerText = '';
+    }
+
+    set divError(value) {
+        const state = this.querySelector('.mode').innerText;
+        if (state !== 'loading') return;
+        this.querySelector('.mode').innerText = 'error';
+        this.querySelector('.status').innerText = value;
+    }
+
+    oninit() {
+        super.oninit();
+
+        this.innerHTML = `
+        <style>
+        video-stream {
+            position: relative;
+        }
+        .info {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 12px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+        </style>
+        <div class="info">
+            <div class="status"></div>
+            <div class="mode"></div>
+        </div>
+        `;
+
+        const info = this.querySelector('.info');
+        this.insertBefore(this.video, info);
+    }
+
+    onconnect() {
+        const result = super.onconnect();
+        if (result) this.divMode = 'loading';
+        return result;
+    }
+
+    ondisconnect() {
+        super.ondisconnect();
+    }
+
+    onopen() {
+        const result = super.onopen();
+
+        this.onmessage['stream'] = msg => {
+            switch (msg.type) {
+                case 'error':
+                    this.divError = msg.value;
+                    break;
+                case 'mse':
+                case 'hls':
+                case 'mp4':
+                case 'mjpeg':
+                    this.divMode = msg.type.toUpperCase();
+                    break;
+            }
+        };
+
+        return result;
+    }
+
+    onclose() {
+        return super.onclose();
+    }
+
+    onpcvideo(video2) {
+        // 补丁点：不走官方的 rtc/mse 优先级比较。WebRTC 连接已建立且 video2 真的解出了画面
+        // （videoWidth > 0 排除纯音频轨道）就切 RTC；否则保持原状让 MSE/HLS/MP4/MJPEG 兜底。
+        if (this.pc && video2.readyState >= 2 && video2.videoWidth > 0) {
+            this.video.srcObject = video2.srcObject;
+            this.play();
+
+            this.pcState = WebSocket.OPEN;
+            this.wsState = WebSocket.CLOSED;
+            if (this.ws) {
+                this.ws.close();
+                this.ws = null;
+            }
+            this.divMode = 'RTC';
+        }
+        video2.srcObject = null;
+    }
+}
+
+customElements.define('video-stream', VideoStream);
+"""
+
 CHECK_TIMEOUT = aiohttp.ClientTimeout(total=6, connect=4)
 PROXY_TIMEOUT = aiohttp.ClientTimeout(total=None, connect=10, sock_connect=10, sock_read=None)
 # MSE/MJPEG 关键帧消息可能较大，两侧 WS 都放宽到 16MB。
@@ -123,9 +230,14 @@ async def _webrtc_tcp_reachable(base_url: str) -> bool:
 
 
 async def player_modes(base_url: str) -> str:
-    """按 WebRTC UDP/TCP 可达性拼下发模式串：UDP 通加 webrtc，TCP 通加 webrtc/tcp，都不通从 mse 开始。"""
+    """按 WebRTC UDP/TCP 可达性拼下发模式串：UDP 通只给 webrtc，UDP 不通但 TCP 通给 webrtc/tcp，都不通从 mse 开始。
+
+    两级不能同时下发：video-rtc.js 只要见到 webrtc/tcp 就会丢弃全部 UDP 候选
+    （`if (this.mode.includes('webrtc/tcp') && msg.value.includes(' udp ')) return;`），
+    导致本来可用的 UDP 路径被废掉、只剩 TCP，反而更容易整体回退到 MSE。
+    """
     udp_ok, tcp_ok = await asyncio.gather(_webrtc_udp_reachable(base_url), _webrtc_tcp_reachable(base_url))
-    head = [mode for ok, mode in ((udp_ok, "webrtc"), (tcp_ok, "webrtc/tcp")) if ok]
+    head = ["webrtc"] if udp_ok else ["webrtc/tcp"] if tcp_ok else []
     if not head:
         log.info("go2rtc 的 WebRTC 端口 %s（UDP/TCP）均不可达，本次画面只用 MSE/HLS/MP4/MJPEG", WEBRTC_PORT)
         return PLAYER_MODES_TAIL
@@ -166,10 +278,12 @@ async def ensure_stream(base_url: str, name: str, src: str) -> None:
 
 
 async def proxy_static(request: web.Request, base_url: str) -> web.StreamResponse:
-    """反向代理 go2rtc 播放器静态文件（白名单内）。"""
+    """反向代理 go2rtc 播放器静态文件（白名单内）；video-stream.js 用补丁版替换（见 PATCHED_VIDEO_STREAM_JS）。"""
     tail = request.match_info.get("tail", "")
     if tail not in ALLOWED_STATIC:
         raise web.HTTPNotFound()
+    if tail == "video-stream.js":
+        return web.Response(text=PATCHED_VIDEO_STREAM_JS, content_type="application/javascript", charset="utf-8")
     headers = {key: value for key, value in request.headers.items()
                if key.lower() not in HOP_BY_HOP and key.lower() != "accept-encoding"}
     async with aiohttp.ClientSession(timeout=PROXY_TIMEOUT) as session:

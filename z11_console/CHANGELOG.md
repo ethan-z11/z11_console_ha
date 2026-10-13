@@ -1,5 +1,9 @@
 # 更新日志
 
+## 1.0.69
+
+- 修复摄像头明明可达 WebRTC 却一直显示 MSE 的两层问题：① go2rtc 播放器只要模式串含 webrtc/tcp 就会丢弃全部 UDP 候选，改为 webrtc 与 webrtc/tcp 按探测结果互斥下发（UDP 通→webrtc，仅 TCP 通→webrtc/tcp）；② 官方播放器「带音频的 MSE 优先于无音频的 WebRTC」规则导致带 AAC 音源的摄像头永远选 MSE，后端代理层改为下发补丁版播放器——WebRTC 真正出画面即切 RTC（低延迟优先），出不了画面仍自动回退 MSE/HLS/MP4/MJPEG
+
 ## 1.0.68
 
 - 摄像头播放回退链支持 WebRTC/TCP：后端分别探测 go2rtc 8555 的 UDP 与 TCP，UDP 不通但 TCP 可达时仍下发 webrtc/tcp 模式（对齐 AlexxIT/WebRTC 卡片行为，MSE 兜底不再提前接管）
