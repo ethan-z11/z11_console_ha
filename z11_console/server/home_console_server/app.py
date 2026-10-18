@@ -599,7 +599,8 @@ class ConsoleServer:
         """
         self._require_login(request)
         src = request.query.get("src", "")
-        if not re.fullmatch(r"/api/[A-Za-z0-9_\-./%]{1,300}", src) or ".." in src:
+        # 允许查询串（media_player_proxy 的 ?token=...&cache=...），禁 .. 防 目录穿越
+        if not re.fullmatch(r"/api/[A-Za-z0-9_\-./%?=&+]{1,600}", src) or ".." in src:
             raise web.HTTPBadRequest(text="bad src")
         settings = self.store.settings
         if settings.data_source != "live" or not settings.ha_url:
