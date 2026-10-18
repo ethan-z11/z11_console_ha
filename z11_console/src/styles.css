@@ -667,6 +667,8 @@ strong { font-weight: 600; }
 
 /* ---------- Media card ---------- */
 .media-card { --glow: var(--accent); --glow-strength: .18; }
+/* 播放内容缩略图背景：左淡右深的横向渐变压底，保证右侧控件可读（tile 的 isolate 使负 z-index 垫在卡片背景之上、内容之下） */
+.media-card__art { position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgba(8, 10, 16, .14) 0%, rgba(8, 10, 16, .48) 55%, rgba(8, 10, 16, .82) 100%), var(--art) center / cover no-repeat; }
 .media-card__header, .media-card__footer { display: flex; align-items: center; gap: 10px; }
 .media-card__icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 13px; background: var(--surface-2); color: var(--text-2); box-shadow: var(--highlight); }
 .media-card.tile--active .media-card__icon { background: color-mix(in srgb, var(--glow) 18%, transparent); color: var(--glow); }

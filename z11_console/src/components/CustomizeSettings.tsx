@@ -1320,7 +1320,7 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
           entity={editingEntity}
           override={custom.entities?.[editingEntity.id]}
           onClose={() => setEditingEntity(null)}
-          onSave={(draft) => saveEntityOverride(editingEntity.id, draft)}
+          onSave={(draft) => { saveEntityOverride(editingEntity.id, draft); setEditingEntity(null); }}
         />
       )}
 
@@ -1332,7 +1332,7 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
           unlabeledTargets={unlabeledTargets}
           entityName={entityNameById.get(editingScene.entity) ?? editingScene.entity}
           onClose={() => setEditingSceneId(null)}
-          onSave={(draft) => saveSceneEdit(editingScene.id, draft)}
+          onSave={(draft) => { saveSceneEdit(editingScene.id, draft); setEditingSceneId(null); }}
         />
       )}
     </>

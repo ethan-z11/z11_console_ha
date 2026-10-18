@@ -590,6 +590,40 @@ class ConsoleServer:
         return web.Response(body=body, content_type=content_type,
                             headers={"Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff"})
 
+    # ---------- HA 媒体缩略图代理（media_player 卡片背景） ----------
+
+    async def media_picture(self, request: web.Request) -> web.Response:
+        """GET /api/media-picture?src=/api/media_proxy/...：代理 HA 的媒体缩略图（entity_picture）。
+
+        只允许 HA 站内相对路径（/api/ 开头、禁 ..），防 SSRF；外部 http(s) 缩略图由浏览器直接加载不走此端点。
+        """
+        self._require_login(request)
+        src = request.query.get("src", "")
+        if not re.fullmatch(r"/api/[A-Za-z0-9_\-./%]{1,300}", src) or ".." in src:
+            raise web.HTTPBadRequest(text="bad src")
+        settings = self.store.settings
+        if settings.data_source != "live" or not settings.ha_url:
+            raise web.HTTPServiceUnavailable(text="HA 未连接")
+        token = self.store.token()
+        if not token:
+            raise web.HTTPServiceUnavailable(text="HA 未配置令牌")
+        url = f"{settings.ha_url}{src}"
+        try:
+            timeout = aiohttp.ClientTimeout(total=10)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(url, headers={"Authorization": f"Bearer {token}"}) as reply:
+                    if reply.status != 200:
+                        raise web.HTTPBadGateway(text="HA picture error")
+                    content_type = reply.headers.get("Content-Type", "")
+                    if not content_type.startswith("image/"):
+                        raise web.HTTPBadGateway(text="not an image")
+                    body = await reply.read()
+        except aiohttp.ClientError as error:
+            log.warning("代理媒体缩略图 %s 失败：%s", src, error)
+            raise web.HTTPBadGateway(text="HA picture unavailable") from error
+        return web.Response(body=body, content_type=content_type,
+                            headers={"Cache-Control": "max-age=60", "X-Content-Type-Options": "nosniff"})
+
     # ---------- 人员在家头像图片 ----------
 
     PEOPLE_IMAGE_DIR = "people-images"
@@ -1318,6 +1352,7 @@ def create_app(data_dir: Path, static_dir: Path | None) -> web.Application:
         web.get("/go2rtc/api/ws", console.go2rtc_ws),
         web.get("/go2rtc/{tail:.*}", console.go2rtc_static),
         web.get("/api/ha-image", console.ha_image),
+        web.get("/api/media-picture", console.media_picture),
         web.get("/api/people-images/{name}", console.people_image),
         web.post("/api/admin/people-image", console.upload_people_image),
         web.put("/api/layout", console.put_layout),

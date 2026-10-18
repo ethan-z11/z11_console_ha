@@ -86,6 +86,7 @@ function toMedia(base: MediaDevice, previous: MediaDevice | undefined, state: En
     available: true,
     status: mediaStatus[state.state] ?? 'unknown',
     detail: str(a.media_title) ?? str(a.app_name),
+    picture: str(a.entity_picture),
     canPower: Boolean(features & (feature.turnOn | feature.turnOff)),
     canPlayPause: Boolean(features & (feature.play | feature.pause)),
     volume: features & feature.volumeSet ? volume !== undefined ? Math.round(volume * 100) : previous?.volume : undefined,

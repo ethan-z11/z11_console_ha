@@ -1,5 +1,7 @@
 import { Pause, Play, Power, Speaker, Tv, Volume2 } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import type { MediaDevice, Room } from '../types';
+import { apiPath } from '../consoleApi';
 import { TileFrame } from './TileFrame';
 import type { TileLayoutProps } from './TileFrame';
 
@@ -21,9 +23,16 @@ export function MediaPlayerCard({ layout, media, room, onPower, onPlayPause, onV
   const status = media.available ? statusLabels[media.status] : '设备不可用';
   const playing = media.status === 'playing';
   const controlsDisabled = !media.available || editing || media.status === 'off';
+  // 缩略图背景：HA 站内相对路径经服务端代理（浏览器无 HA 令牌），外部 http(s) 直接加载。
+  const art = media.picture
+    ? media.picture.startsWith('/')
+      ? apiPath(`/api/media-picture?src=${encodeURIComponent(media.picture)}`)
+      : media.picture
+    : undefined;
 
   return (
     <TileFrame {...layout} className="media-card" active={playing}>
+      {art && <div className="media-card__art" style={{ '--art': `url("${art}")` } as CSSProperties} aria-hidden="true" />}
       <div className="media-card__header">
         <span className="media-card__icon"><Icon size={21} /></span>
         <div className="media-card__identity"><span className="tile__room tile__room--inline" aria-hidden="true">{room.name}</span><span className="tile__name">{media.name}</span><span className="tile__note">{status}</span></div>

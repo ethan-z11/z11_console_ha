@@ -1,5 +1,10 @@
 # 更新日志
 
+## 1.0.70
+
+- 设备改名、情景编辑等设置弹窗保存后自动关闭，不再停留
+- 媒体播放器卡片有播放内容缩略图时（entity_picture），以缩略图为卡片背景，叠加「左淡右深」横向渐变保证右侧控件可读；HA 站内缩略图经新增的 /api/media-picture 服务端代理加载（浏览器无需 HA 令牌），外部缩略图直连
+
 ## 1.0.69
 
 - 修复摄像头明明可达 WebRTC 却一直显示 MSE 的两层问题：① go2rtc 播放器只要模式串含 webrtc/tcp 就会丢弃全部 UDP 候选，改为 webrtc 与 webrtc/tcp 按探测结果互斥下发（UDP 通→webrtc，仅 TCP 通→webrtc/tcp）；② 官方播放器「带音频的 MSE 优先于无音频的 WebRTC」规则导致带 AAC 音源的摄像头永远选 MSE，后端代理层改为下发补丁版播放器——WebRTC 真正出画面即切 RTC（低延迟优先），出不了画面仍自动回退 MSE/HLS/MP4/MJPEG

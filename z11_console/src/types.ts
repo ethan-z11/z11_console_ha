@@ -79,6 +79,8 @@ export interface MediaDevice extends BaseDevice {
   mediaType: 'tv' | 'speaker';
   status: 'off' | 'idle' | 'playing' | 'paused' | 'unknown';
   detail?: string;
+  /** 播放内容缩略图（HA entity_picture 相对路径或外部 URL），作卡片背景。 */
+  picture?: string;
   canPower?: boolean;
   canPlayPause?: boolean;
   volume?: number;
