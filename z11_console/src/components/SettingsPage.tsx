@@ -141,6 +141,8 @@ export function SettingsPage({ status, user, ingress, firstRun, onLogout, onAuth
   useEffect(() => {
     let active = true;
     if (isAdmin) {
+      // 访客可能在页面内完成管理员验证（isAdmin 翻转），此时必须重新拉取——不能只靠首次挂载。
+      if (tab === 'login') setTab('connection');
       getSettings()
         .then((loaded) => { if (active) { setSettings(loaded); setHaUrl(loaded.haUrl); setTileScale(loaded.tileScale ?? 100); setMusicUrl(loaded.musicUrl ?? ''); setGo2rtcUrl(loaded.go2rtcUrl ?? ''); } })
         .catch((error: Error) => { if (active) onExpired(error.message); });
@@ -150,8 +152,8 @@ export function SettingsPage({ status, user, ingress, firstRun, onLogout, onAuth
     }
     refreshAudit('all');
     return () => { active = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅首次挂载拉取
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 依赖 isAdmin：页面内验证管理员后重新拉取设置数据
+  }, [isAdmin]);
 
   useEffect(() => {
     if (tileScale === null || !settings || tileScale === (settings.tileScale ?? 100)) return;
