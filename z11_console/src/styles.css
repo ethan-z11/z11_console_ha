@@ -1259,11 +1259,16 @@ strong { font-weight: 600; }
   .weather-place__tools { flex-basis: 100%; max-width: none; }
   .weather-now__metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .weather-day { grid-template-columns: 48px 26px minmax(0, 1fr) minmax(120px, 44%); gap: 8px; }
-  /* 手机主页：寄语与时间/日期/星期（含农历行）隐藏，天气上移到页头操作行、设置按钮右边靠右 */
+  /* 手机主页：寄语与时间/日期/星期（含农历行）隐藏；页头一行排布——沉浸/设置按钮最左、连接徽标随后、天气最右，不换行 */
   .hero--home .hero__brand { display: none; }
   .hero--home .hero__title { display: none; }
-  .hero--home .hero__top { justify-content: flex-end; flex-wrap: wrap; row-gap: 6px; }
-  .hero--home .hero__body { margin-top: 10px; }
+  .hero--home .hero__top { justify-content: flex-start; gap: 6px; }
+  .hero--home .hero__top .hero__actions { gap: 6px; }
+  .hero--home .hero__top .hero__actions .icon-button { order: -1; }
+  .hero--home .hero__top .demo-flag { padding: 0 7px; font-size: 11px; }
+  .hero--home .hero__top .weather-compact { margin-left: auto; zoom: calc(var(--weather-scale, 1) * .85); }
+  .hero--home .hero__body { margin-top: 4px; }
+  .hero--home .hero__main .status-row { margin-top: 6px; }
   .hero--home { min-height: 0; }
 }
 @media (max-width: 420px) {
