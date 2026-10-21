@@ -511,6 +511,8 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
         <div className="hero__top">
           <span className="hero__brand">{homeGreeting(now)}</span>
           {(!compactActive || page !== 'home') && heroActions}
+          {/* 天气常驻页头操作行行尾：桌面端 CSS 隐藏（用右侧大天气卡），手机分辨率显示在设置按钮右边 */}
+          {page === 'home' && <WeatherCompact weather={weather} onOpen={() => setWeatherOpen(true)} />}
         </div>
         <div className={`hero__body ${enterClass}`} key={pageKey}>
           <div className="hero__main">
@@ -523,7 +525,6 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
                     : null)
                   : <p>{page === 'room' ? '房间状态与设备控制' : page === 'settings' ? '管理密码、Home Assistant 连接与控制权限' : '内嵌音乐界面'}</p>}
               </div>
-              {page === 'home' && <WeatherCompact weather={weather} onOpen={() => setWeatherOpen(true)} />}
             </div>
             {compactActive && page === 'home' ? (
               <div className="hero__pills-row">
