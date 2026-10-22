@@ -505,6 +505,7 @@ strong { font-weight: 600; }
 .tile--hk .tile__top { display: contents; }
 .tile--hk .tile__power { width: 38px; height: 38px; }
 .tile--hk .light-card__compact-bottom { flex: 1; min-width: 0; align-items: center; }
+.tile--hk .cover-card__compact-bottom { flex: 1; min-width: 0; align-items: center; }
 /* HomeKit 卡更窄：名称与状态一律单行省略；房间名绝对定位右上角，不挤占内容列，保证「34% · 3500K」这类状态完整显示 */
 .tile--hk .tile__name { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tile--hk .tile__note { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

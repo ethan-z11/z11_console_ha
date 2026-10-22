@@ -90,9 +90,9 @@ export function LightCard({ layout, light, room, onToggle, onChange, childDevice
   const minColorTemp = light.minColorTempKelvin ?? 2700;
   const maxColorTemp = light.maxColorTempKelvin ?? 6500;
   const colorTemp = light.colorTemp ?? 4000;
-  // HomeKit 模式：已开的灯直接显示亮度百分比（有色温再带上 K 值），替代「已打开」。
-  const hkStatus = !light.available ? '设备不可用' : light.on ? `${brightness}%${supportsColorTemperature(light) ? ` · ${colorTemp}K` : ''}` : '已关闭';
   const activeColorMode = light.activeColorMode ?? (light.color ? 'color' : 'color_temp');
+  // HomeKit 模式：已开的灯直接显示亮度百分比；彩色模式（RGB）下不显示色温 K 值。
+  const hkStatus = !light.available ? '设备不可用' : light.on ? `${brightness}%${supportsColorTemperature(light) && activeColorMode !== 'color' ? ` · ${colorTemp}K` : ''}` : '已关闭';
   const brightnessStyle = { '--range-progress': `${brightness}%` } as CSSProperties;
   const glowStyle = { '--light-glow': lightGlow(light), '--light-level': adjustable ? .45 + brightness / 180 : 1 } as CSSProperties;
   const hasPalette = supportsColorTemperature(light) || supportsColor(light);
