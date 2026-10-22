@@ -191,6 +191,15 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
   }, []);
   const compactActive = compactHome || compactForced;
 
+  // HomeKit 卡片比例（本机保存）：灯/开关/风扇小卡变约 2.4:1 宽扁、大卡同宽两倍高，长按弹设置。
+  const [homekitTiles, setHomekitTiles] = useState(() => localStorage.getItem('z11.homekitTiles') === '1');
+  useEffect(() => {
+    const sync = () => setHomekitTiles(localStorage.getItem('z11.homekitTiles') === '1');
+    window.addEventListener('z11-homekit-tiles', sync);
+    window.addEventListener('storage', sync);
+    return () => { window.removeEventListener('z11-homekit-tiles', sync); window.removeEventListener('storage', sync); };
+  }, []);
+
   // 后端推来的共用布局（首次连接或其他屏幕修改后）直接采用。
   useEffect(() => {
     if (!server.layout) return;
@@ -453,9 +462,12 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
   const favoriteSpans = favoriteDevices.map((device) => tileSizeForDevice(device, layout.sizes[favoriteSizeKey(device.id)]) === '2x1' ? 2 : 1);
   const duoActive = homeDuo && favoriteDevices.length > 0;
 
+  // HomeKit 比例只作用于灯 / 开关 / 风扇三类卡片，其余卡片保持原样（在 HK 网格里占两行补齐）。
+  const hkTilesFor = (device: Device) => homekitTiles && (device.kind === 'light' || device.kind === 'switch' || device.kind === 'fan');
+
   /** “正在运行”用于查看和顺手关掉，统一用单格；只能双格的（播放器）保持默认。 */
   function runningCard(device: Device) {
-    return card(device, roomOf(device), { size: allowedSizesForDevice(device).includes('1x1') ? '1x1' : tileSizeForDevice(device) });
+    return card(device, roomOf(device), { size: allowedSizesForDevice(device).includes('1x1') ? '1x1' : tileSizeForDevice(device), hkTiles: hkTilesFor(device) });
   }
 
   function turnOffRunning() {
@@ -472,6 +484,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
       size: tileSizeForDevice(device, layout.sizes[device.id]),
       onSizeChange: changeSize,
       ...editingTile(device, index, selectedRoomDevices.length),
+      hkTiles: hkTilesFor(device),
     });
   }
 
@@ -594,7 +607,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
               </div>
             </div>
             {runningOthers.length > 0
-              ? <AdaptiveGrid className="tile-grid tile-grid--running" scale={tileScale}>{runningOthers.map(runningCard)}</AdaptiveGrid>
+              ? <AdaptiveGrid className={`tile-grid tile-grid--running${homekitTiles ? ' adaptive-grid--hk' : ''}`} scale={tileScale}>{runningOthers.map(runningCard)}</AdaptiveGrid>
               : runningNow === 0 && <div className="empty-room"><span className="tile__chip"><Power size={20} /></span><p>目前没有打开的设备。</p></div>}
           </>
         )}
@@ -610,7 +623,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
               </div>
             </div>
             {selectedRoomDevices.length > 0
-              ? <AdaptiveGrid className="tile-grid tile-grid--room" scale={tileScale}>{selectedRoomDevices.map(roomCard)}</AdaptiveGrid>
+              ? <AdaptiveGrid className={`tile-grid tile-grid--room${homekitTiles ? ' adaptive-grid--hk' : ''}`} scale={tileScale}>{selectedRoomDevices.map(roomCard)}</AdaptiveGrid>
               : <EmptyRoomCard name={selectedRoom.name} />}
           </>
         )}

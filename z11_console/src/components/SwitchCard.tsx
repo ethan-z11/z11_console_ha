@@ -10,7 +10,7 @@ interface SwitchCardProps {
   onToggle: (id: string) => void;
 }
 
-/** 普通开关 / 智能插座卡片：只有开与关，点卡片任意位置或电源按钮即翻转，无需弹窗。 */
+/** 普通开关 / 智能插座卡片：只有开与关，点卡片任意位置或电源按钮即翻转，无需弹窗；HomeKit 模式下变宽扁比例。 */
 export function SwitchCard({ layout, device, room, onToggle }: SwitchCardProps) {
   const { editing } = layout;
   const DeviceIcon = deviceIcon(device);

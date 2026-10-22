@@ -20,13 +20,14 @@ interface FanCardProps {
 
 /** 风扇 / 新风机卡片：开关 + 百分比风速滑杆 + 预设风类（直吹风 / 自然风 / 进风 等）+ 摇头开关。 */
 export function FanCard({ layout, fan, room, onToggle, onSpeed, onPreset, onOscillate }: FanCardProps) {
-  const { size, editing } = layout;
+  const { size, editing, hkTiles: hk } = layout;
   const DeviceIcon = deviceIcon(fan);
   const adjustable = fan.percentage !== undefined;
   // HA 上报 oscillating 属性才代表支持摇头。
   const canOscillate = fan.oscillating !== undefined;
-  // 默认小卡：可调速或可摇头的风扇在小卡时点齿轮打开详情弹窗控制。
-  const compact = (adjustable || canOscillate) && size === '1x1';
+  const hasDialog = adjustable || canOscillate;
+  // 默认小卡：可调速或可摇头的风扇在小卡时点齿轮打开详情弹窗控制；HomeKit 模式一律紧凑排版、长按弹窗。
+  const compact = hasDialog && (size === '1x1' || Boolean(hk));
   const disabled = !fan.available || Boolean(editing);
   // 关机后风类 / 摇头按钮不可用，也不再显示高亮态。
   const controlsDisabled = disabled || !fan.on;
@@ -77,7 +78,7 @@ export function FanCard({ layout, fan, room, onToggle, onSpeed, onPreset, onOsci
 
   return (
     <>
-    <TileFrame {...layout} className={`light-card fan-card${compact ? ' light-card--compact fan-card--compact' : ''}`} active={fan.on} onOpen={compact && fan.available ? () => setDetailOpen(true) : undefined}>
+    <TileFrame {...layout} className={`light-card fan-card${compact ? ' light-card--compact fan-card--compact' : ''}`} active={fan.on} onOpen={compact && fan.available ? () => setDetailOpen(true) : undefined} onLongPress={hk && hasDialog && fan.available ? () => setDetailOpen(true) : undefined}>
       <div className="tile__top">
         <button type="button" className="tile__power" onClick={() => onToggle(fan.id)} disabled={disabled} aria-label={`${fan.on ? '关闭' : '打开'}${room.name}${fan.name}`} aria-pressed={fan.on}><DeviceIcon size={21} /></button>
         {!compact && <div className="light-card__identity"><span className="tile__room tile__room--inline" aria-hidden="true">{room.name}</span><span className="tile__name">{fan.name}</span><span className="tile__note">{status}</span></div>}
@@ -94,7 +95,7 @@ export function FanCard({ layout, fan, room, onToggle, onSpeed, onPreset, onOsci
           )}
         </div>
       ) : <div className="light-card__compact-bottom"><div className="light-card__identity"><span className="tile__room tile__room--inline" aria-hidden="true">{room.name}</span><span className="tile__name">{fan.name}</span><span className="tile__note">{compactStatus}</span></div>
-        {compact && !editing && <button type="button" className="light-card__settings" onClick={() => setDetailOpen(true)} disabled={!fan.available} aria-label={`设置${room.name}${fan.name}风速、摇头和风类`} aria-haspopup="dialog" aria-controls={detailOpen ? detailId : undefined}><SlidersHorizontal size={18} /></button>}
+        {compact && !editing && !hk && <button type="button" className="light-card__settings" onClick={() => setDetailOpen(true)} disabled={!fan.available} aria-label={`设置${room.name}${fan.name}风速、摇头和风类`} aria-haspopup="dialog" aria-controls={detailOpen ? detailId : undefined}><SlidersHorizontal size={18} /></button>}
       </div>}
     </TileFrame>
     {compact && detailOpen && createPortal(<dialog ref={detailRef} id={detailId} className="light-detail-dialog" aria-labelledby={`${detailId}-title`} onClose={() => { setDetailOpen(false); releasePointerFocus(); }} onCancel={() => setDetailOpen(false)} onClick={(e) => { if (e.target === e.currentTarget) setDetailOpen(false); }}>
