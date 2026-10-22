@@ -28,7 +28,6 @@ export function FanCard({ layout, fan, room, onToggle, onSpeed, onPreset, onOsci
   const { size, editing, hkTiles: hk } = layout;
   // HomeKit 模式：1×1 横排窄卡，2×1 用原版紧凑方形内容，点击按原结构。
   const hkSmall = Boolean(hk) && size === '1x1';
-  const compact = hasDialog && (size === '1x1' || Boolean(hk));
   const DeviceIcon = deviceIcon(fan);
   const adjustable = fan.percentage !== undefined;
   // HA 上报 oscillating 属性才代表支持摇头。
