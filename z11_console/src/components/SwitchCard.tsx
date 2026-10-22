@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { Power, X } from 'lucide-react';
 import { deviceIcon } from '../appearance';
 import { releasePointerFocus } from '../focus';
 import type { Room, SwitchDevice } from '../types';
@@ -53,8 +53,13 @@ export function SwitchCard({ layout, device, room, onToggle, onTimerSet, onTimer
     </TileFrame>
     {detailOpen && createPortal(<dialog ref={detailRef} id={detailId} className="light-detail-dialog switch-detail-dialog" aria-labelledby={`${detailId}-title`} onClose={() => { setDetailOpen(false); releasePointerFocus(); }} onCancel={() => setDetailOpen(false)} onClick={(e) => { if (e.target === e.currentTarget) setDetailOpen(false); }}>
       <div className="light-detail-dialog__heading"><div><small>{room.name}</small><h2 id={`${detailId}-title`}>{device.name}</h2></div><button type="button" onClick={() => setDetailOpen(false)} autoFocus aria-label="关闭开关设置"><X size={20} /></button></div>
-      {/* 开关本体卡：原版小卡片排版，高度按 HomeKit 比例；点卡片仍可翻转。 */}
-      <SwitchCard layout={{ id: device.id, label: `${room.name}${device.name}`, size: '1x1', hkTiles: hk }} device={device} room={room} onToggle={onToggle} onTimerSet={onTimerSet} onTimerClear={onTimerClear} />
+      {/* 开关本体只留一个大图标按钮代表开关：点击翻转，状态文字随动。 */}
+      <div className="switch-detail-dialog__body">
+        <button type="button" className={`switch-detail-dialog__toggle${device.on ? ' is-on' : ''}`} onClick={() => onToggle(device.id)} disabled={!device.available} aria-label={`${device.on ? '关闭' : '打开'}${room.name}${device.name}`} aria-pressed={device.on}>
+          <Power size={34} />
+        </button>
+        <span className="switch-detail-dialog__status">{!device.available ? '设备不可用' : device.on ? '已打开' : '已关闭'}</span>
+      </div>
       <DelayTimerBlock device={device} armed={device.available && device.on} onSet={onTimerSet} onClear={onTimerClear} />
     </dialog>, document.body)}
     </>

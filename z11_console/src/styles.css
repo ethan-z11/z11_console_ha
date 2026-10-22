@@ -1550,10 +1550,12 @@ html, body { overscroll-behavior-y: none; }
 
 /* ---------- 设备延时关闭（设置弹窗内，米家风格：开关 + 延迟时间行 + 紧凑滚轮） ---------- */
 .timer-block { border-top: 1px solid var(--glass-border); margin-top: 14px; padding-top: 12px; display: grid; gap: 8px; }
-.timer-block--disabled { opacity: .45; pointer-events: none; }
+/* 视觉置灰但保留点击（点击时提示“设备状态关闭，无法启动计时”，避免 pointer-events 穿透误关弹窗）。 */
+.timer-block--disabled { opacity: .45; }
 .timer-block__row { display: flex; align-items: center; gap: 10px; color: var(--text); font-size: 14px; min-height: 30px; }
 .timer-block__title { flex: 1; font-weight: 600; }
 .timer-switch { position: relative; flex: none; width: 44px; height: 26px; border-radius: 13px; border: none; padding: 0; background: color-mix(in srgb, var(--text-3) 42%, transparent); transition: background .2s; cursor: pointer; }
+.timer-switch--locked { cursor: not-allowed; }
 .timer-switch.is-on { background: var(--accent); }
 .timer-switch__thumb { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); transition: transform .2s; }
 .timer-switch.is-on .timer-switch__thumb { transform: translateX(18px); }
@@ -1570,12 +1572,33 @@ button.timer-block__meta { width: 100%; padding: 0; border: 0; background: none;
 .timer-wheel__item { display: block; height: 34px; line-height: 34px; font-size: 16px; color: var(--text-2); scroll-snap-align: center; font-variant-numeric: tabular-nums; transition: color .15s; }
 .timer-wheel__item.is-active { color: var(--text); font-weight: 700; }
 .timer-wheel__spacer { height: 34px; }
+.timer-wheel__input { width: 56px; text-align: center; font-size: 13px; padding: 5px 4px; border-radius: 8px; border: 1px solid var(--glass-border); background: var(--glass); color: var(--text); font-variant-numeric: tabular-nums; -moz-appearance: textfield; appearance: textfield; }
+.timer-wheel__input::-webkit-outer-spin-button, .timer-wheel__input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.timer-block__tip { margin: 0; font-size: 12px; color: #e05a4e; }
 .timer-wheel__a11y { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .timer-block__presets { display: flex; gap: 8px; }
 .timer-block__presets button { flex: 1; border: 1px solid var(--glass-border); background: var(--glass); color: var(--text); border-radius: 10px; padding: 7px 0; font-size: 12px; cursor: pointer; }
 .timer-block__presets button:active { background: rgba(var(--accent-rgb), .22); }
 .timer-block__start { border: none; border-radius: 12px; padding: 10px 0; background: var(--accent); color: var(--accent-ink, #fff); font-size: 14px; font-weight: 600; cursor: pointer; }
 .timer-block__start:disabled { opacity: .4; cursor: default; }
+
+/* ---------- 开关 / 电视设置弹窗：大图标代表开关本体 ---------- */
+.switch-detail-dialog__body { display: grid; justify-items: center; gap: 8px; padding: 18px 0 6px; }
+.switch-detail-dialog__toggle { width: 84px; height: 84px; border-radius: 50%; border: 1px solid var(--glass-border); background: var(--glass); color: var(--text-2); display: grid; place-items: center; cursor: pointer; transition: background .2s, color .2s, border-color .2s; }
+.switch-detail-dialog__toggle.is-on { background: rgba(var(--accent-rgb), .18); border-color: rgba(var(--accent-rgb), .55); color: var(--accent); }
+.switch-detail-dialog__toggle:disabled { opacity: .45; cursor: default; }
+.switch-detail-dialog__status { font-size: 13px; color: var(--text-2); }
+
+/* ---------- 「正在计时」列表弹窗 ---------- */
+.timers-dialog__list { display: grid; gap: 8px; min-width: min(72vw, 340px); }
+.timers-dialog__row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--glass); border: 1px solid var(--glass-border); }
+.timers-dialog__meta { flex: 1; min-width: 0; display: grid; }
+.timers-dialog__name { font-size: 14px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.timers-dialog__room { font-size: 11px; color: var(--text-2); }
+.timers-dialog__row output { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--text); font-weight: 600; }
+.timers-dialog__cancel { flex: none; border: 1px solid var(--glass-border); background: none; color: var(--text-2); font-size: 12px; padding: 6px 10px; border-radius: 9px; cursor: pointer; }
+.timers-dialog__cancel:hover { color: #e05a4e; border-color: #e05a4e; }
+.timers-dialog__hint { margin: 10px 0 0; font-size: 11px; color: var(--text-3); }
 
 /* ---------- 农历老黄历弹窗 ---------- */
 .device-dialog.almanac-dialog {

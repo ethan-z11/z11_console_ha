@@ -1,10 +1,10 @@
 import { Battery, BatteryCharging, Bell, Home, Pause, Play, SlidersHorizontal, X } from 'lucide-react';
-import { apiPath } from '../consoleApi';
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { deviceIcon } from '../appearance';
 import { releasePointerFocus } from '../focus';
 import type { Room, VacuumDevice, VacuumStatus } from '../types';
+import { DelayTimerBlock } from './DelayTimer';
 import { TileFrame } from './TileFrame';
 import type { TileLayoutProps } from './TileFrame';
 
@@ -33,10 +33,14 @@ interface VacuumCardProps {
   onReturn: (id: string) => void;
   onLocate: (id: string) => void;
   onFanSpeed: (id: string, fanSpeed: string) => void;
+  /** 延时关闭（设置弹窗内）：seconds 秒后由服务端关闭扫地机（停止清扫并回充语义交给 HA turn_off）。 */
+  onTimerSet: (id: string, seconds: number) => void;
+  /** 提前取消延时关闭。 */
+  onTimerClear: (id: string) => void;
 }
 
 /** 扫地机器人卡片：状态、电量、清扫地图（HA image 实体经后端代理）、清扫 / 回充 / 寻找与档位控制。 */
-export function VacuumCard({ layout, vacuum, room, onToggle, onStart, onPause, onReturn, onLocate, onFanSpeed }: VacuumCardProps) {
+export function VacuumCard({ layout, vacuum, room, onToggle, onStart, onPause, onReturn, onLocate, onFanSpeed, onTimerSet, onTimerClear }: VacuumCardProps) {
   const { size, editing } = layout;
   const DeviceIcon = deviceIcon(vacuum);
   const disabled = !vacuum.available || Boolean(editing);
@@ -67,7 +71,7 @@ export function VacuumCard({ layout, vacuum, room, onToggle, onStart, onPause, o
     : null;
 
   const mapImage = () => vacuum.mapEntity
-    ? <img className="vacuum-card__map-img" src={apiPath(`/api/ha-image?entity=${encodeURIComponent(vacuum.mapEntity)}&v=${tick}`)} alt={`${room.name}${vacuum.name}清扫地图`} draggable={false} />
+    ? <img className="vacuum-card__map-img" src={`/api/ha-image?entity=${encodeURIComponent(vacuum.mapEntity)}&v=${tick}`} alt={`${room.name}${vacuum.name}清扫地图`} draggable={false} />
     : <div className="vacuum-card__map-img vacuum-card__map-empty"><DeviceIcon size={26} /><span>暂无地图</span></div>;
 
   const fanSpeeds = vacuum.fanSpeeds && vacuum.fanSpeeds.length > 0
@@ -117,6 +121,7 @@ export function VacuumCard({ layout, vacuum, room, onToggle, onStart, onPause, o
         {fanSpeeds}
         {buttons}
       </div>
+      <DelayTimerBlock device={vacuum} armed={vacuum.available && (vacuum.status === 'cleaning' || vacuum.status === 'paused' || vacuum.status === 'returning')} onSet={onTimerSet} onClear={onTimerClear} />
     </dialog>, document.body)}
     </>
   );

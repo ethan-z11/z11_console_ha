@@ -1,4 +1,4 @@
-import { Battery, BatteryFull, BatteryMedium, BatteryWarning, DoorOpen, Droplets, Fan, Lightbulb, ShieldAlert, Thermometer, Waves, Wind } from 'lucide-react';
+import { Battery, BatteryFull, BatteryMedium, BatteryWarning, DoorOpen, Droplets, Fan, Hourglass, Lightbulb, ShieldAlert, Thermometer, Waves, Wind } from 'lucide-react';
 import { isActiveAlert, isLit, isOpenDoor } from '../selectors';
 import type { HomeState } from '../types';
 import type { ActiveListRequest } from './ActiveDevicesDialog';
@@ -13,8 +13,8 @@ function highlightPillVisual(level: number | null, available: boolean) {
   return { icon: <BatteryFull size={15} />, tone: '', label: `${level}%` };
 }
 
-/** onOpen：点亮灯、空调、地暖标签打开对应列表（可一键关闭）。onOpenBattery：打开电池状态列表。batteryEnabled：主页电池总药丸是否显示。 */
-export function HomeStatusSummary({ home, onOpen, onOpenBattery, batteryEnabled }: { home: HomeState; onOpen: (request: ActiveListRequest) => void; onOpenBattery: () => void; batteryEnabled: boolean }) {
+/** onOpen：点亮灯、空调、地暖标签打开对应列表（可一键关闭）。onOpenBattery：打开电池状态列表。onOpenTimers：打开正在计时列表。batteryEnabled：主页电池总药丸是否显示。 */
+export function HomeStatusSummary({ home, onOpen, onOpenBattery, onOpenTimers, timersCount, batteryEnabled }: { home: HomeState; onOpen: (request: ActiveListRequest) => void; onOpenBattery: () => void; onOpenTimers: () => void; timersCount: number; batteryEnabled: boolean }) {
   const alerts = home.devices.filter(isActiveAlert).length;
   const openDoors = home.devices.filter(isOpenDoor);
   const lit = home.devices.filter(isLit).length;
@@ -43,6 +43,7 @@ export function HomeStatusSummary({ home, onOpen, onOpenBattery, batteryEnabled 
       {openDoors.length > 0 && <span className="status-pill"><DoorOpen size={15} />{openDoors.length <= 2 ? `${openDoors.map((device) => device.name).join('、')}已打开` : `${openDoors.length} 处门窗打开`}</span>}
       {runningFloorHeatings > 0 && <button type="button" className="status-pill status-pill--heat status-pill--button" onClick={() => onOpen({ kind: 'heating' })}><Waves size={15} />{runningFloorHeatings} 处制热已开启</button>}
       {runningFans > 0 && <button type="button" className="status-pill status-pill--cool status-pill--button" onClick={() => onOpen({ kind: 'fan' })}><Fan size={15} />{runningFans} 台风扇开启</button>}
+      {timersCount > 0 && <button type="button" className="status-pill status-pill--heat status-pill--button" onClick={onOpenTimers}><Hourglass size={15} />{timersCount} 项正在计时</button>}
       {highlight && (() => {
         const v = highlightPillVisual(highlight.level, highlight.available);
         return <button type="button" className={`status-pill status-pill--button${v.tone}`} onClick={onOpenBattery} title={highlight.name}>{v.icon}{highlight.name} {v.label}</button>;

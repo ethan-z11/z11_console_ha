@@ -4,8 +4,10 @@ import type { Device } from '../types';
 
 interface DelayTimerBlockProps {
   device: Device;
-  /** 设备处于开启状态（灯 / 开关 / 风扇的 on，窗帘的 open / opening）才允许开启计时。 */
+  /** 设备处于开启状态（各类设备的“开机”语义）才允许开启计时；关闭时点击给出提示。 */
   armed: boolean;
+  /** 关闭状态下点击计时控件时的提示文案（如“设备状态关闭，无法启动计时”）。 */
+  disabledTip?: string;
   onSet: (id: string, seconds: number) => void;
   onClear: (id: string) => void;
 }
@@ -16,8 +18,8 @@ const minuteValues = Array.from({ length: 60 }, (_, index) => String(index));
 /** 常用倒计时（对齐米家）：10 分钟 / 30 分钟 / 1 小时 / 2 小时 30 分。 */
 const quickPresets: [string, number][] = [['10分钟', 600], ['30分钟', 1800], ['1小时', 3600], ['2小时30分', 9000]];
 
-/** 每秒跳动的当前时间；仅在倒计时进行时启用，用于刷新剩余时间显示。 */
-function useNowTick(active: boolean) {
+/** 每秒跳动的当前时间；仅在激活时启用（供倒计时剩余时间显示共用）。 */
+export function useNowTick(active: boolean) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!active) return;
@@ -27,7 +29,7 @@ function useNowTick(active: boolean) {
   return now;
 }
 
-function formatRemaining(ms: number): string {
+export function formatRemaining(ms: number): string {
   const total = Math.max(0, Math.round(ms / 1000));
   const hours = Math.floor(total / 3600);
   const minutes = Math.floor((total % 3600) / 60);
@@ -44,7 +46,7 @@ interface WheelProps {
   label: string;
 }
 
-/** 时 / 分滚轮：竖向 scroll-snap 选择（米家倒计时风格），容器三行可见、上下渐隐。 */
+/** 时 / 分滚轮：竖向 scroll-snap 选择（米家倒计时风格），容器三行可见、上下渐隐；旁边有数字输入可直接手填。 */
 function Wheel({ values, index, onIndexChange, label }: WheelProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const settleTimer = useRef(0);
@@ -62,6 +64,7 @@ function Wheel({ values, index, onIndexChange, label }: WheelProps) {
     window.clearTimeout(settleTimer.current);
     settleTimer.current = window.setTimeout(() => onIndexChange(next), 120);
   }
+  const max = values.length - 1;
   return (
     <div className="timer-wheel">
       <span className="timer-wheel__label">{label}</span>
@@ -72,29 +75,49 @@ function Wheel({ values, index, onIndexChange, label }: WheelProps) {
         ))}
         <div className="timer-wheel__spacer" aria-hidden="true" />
       </div>
-      <select className="timer-wheel__a11y" value={index} onChange={(event) => onIndexChange(Number(event.target.value))} aria-label={label}>
-        {values.map((value, position) => <option key={value} value={position}>{value}</option>)}
-      </select>
+      {/* 手填输入：与滚轮双向同步，输入超出范围自动收敛。 */}
+      <input
+        type="number"
+        className="timer-wheel__input"
+        min={0}
+        max={max}
+        value={index}
+        onChange={(event) => {
+          const next = Number(event.target.value);
+          if (Number.isNaN(next)) return;
+          onIndexChange(Math.min(max, Math.max(0, Math.floor(next))));
+        }}
+        inputMode="numeric"
+        aria-label={`手动输入${label}数`}
+      />
     </div>
   );
 }
 
 /**
- * 延时关闭区块（设备设置弹窗内）：开关 + 延迟时间行 + 紧凑滚轮选择面板（米家风格）。
- * 只有设备开启时可操作；倒计时进行中显示剩余时间，点开关即提前取消；
+ * 延时关闭区块（设备设置弹窗内）：开关 + 延迟时间行 + 紧凑滚轮/手填选择面板（米家风格）。
+ * 只有设备开启时可开启计时；倒计时进行中显示剩余时间，点开关即提前取消；
  * 设备被其它方式关闭时服务端立即作废计时，本组件随 timerEndsAt 消失自动复位。
  */
-export function DelayTimerBlock({ device, armed, onSet, onClear }: DelayTimerBlockProps) {
+export function DelayTimerBlock({ device, armed, disabledTip = '设备状态关闭，无法启动计时', onSet, onClear }: DelayTimerBlockProps) {
   const timerEndsAt = device.timerEndsAt;
   const timerActive = Boolean(timerEndsAt && timerEndsAt > 0);
   const now = useNowTick(timerActive);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [hour, setHour] = useState(1);
   const [minute, setMinute] = useState(0);
+  const [tip, setTip] = useState('');
+  const tipTimer = useRef(0);
   // 设备关闭 / 计时被服务端作废时收起选择面板。
   useEffect(() => {
     if (!armed || !timerActive) setPickerOpen(false);
   }, [armed, timerActive]);
+  useEffect(() => () => window.clearTimeout(tipTimer.current), []);
+  function warnDisabled() {
+    setTip(disabledTip);
+    window.clearTimeout(tipTimer.current);
+    tipTimer.current = window.setTimeout(() => setTip(''), 2200);
+  }
   const remaining = timerActive ? Math.max(0, (timerEndsAt as number) - now) : 0;
   const pickedSeconds = hour * 3600 + minute * 60;
   const pickedLabel = pickedSeconds >= 60 ? `${hour > 0 ? `${hour}小时` : ''}${minute > 0 ? `${minute}分钟` : hour > 0 ? '' : '1小时'}` : '1小时';
@@ -106,12 +129,12 @@ export function DelayTimerBlock({ device, armed, onSet, onClear }: DelayTimerBlo
         <span className="timer-block__title">延时关闭</span>
         <button
           type="button"
-          className={`timer-switch${timerActive ? ' is-on' : ''}`}
-          disabled={!armed}
+          className={`timer-switch${timerActive ? ' is-on' : ''}${armed ? '' : ' timer-switch--locked'}`}
           role="switch"
           aria-checked={timerActive}
+          aria-disabled={!armed && !timerActive}
           aria-label={`延时关闭${device.name}`}
-          onClick={() => (timerActive ? onClear(device.id) : setPickerOpen((open) => !open))}
+          onClick={() => (timerActive ? onClear(device.id) : armed ? setPickerOpen((open) => !open) : warnDisabled())}
         >
           <span className="timer-switch__thumb" />
         </button>
@@ -122,12 +145,13 @@ export function DelayTimerBlock({ device, armed, onSet, onClear }: DelayTimerBlo
           <output>{formatRemaining(remaining)}</output>
         </div>
       ) : (
-        <button type="button" className="timer-block__row timer-block__meta timer-block__link" disabled={!armed} onClick={() => setPickerOpen(true)}>
+        <button type="button" className="timer-block__row timer-block__meta timer-block__link" onClick={() => (armed ? setPickerOpen(true) : warnDisabled())}>
           <span>延迟时间</span>
           <span className="timer-block__value">{pickedLabel}</span>
           <ChevronRight size={15} />
         </button>
       )}
+      {tip && <p className="timer-block__tip">{tip}</p>}
       {pickerOpen && !timerActive && armed && (
         <div className="timer-block__picker">
           <div className="timer-block__wheels">

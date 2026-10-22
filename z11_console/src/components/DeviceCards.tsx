@@ -34,7 +34,7 @@ export function DeviceCard({ device, room, tile, actions, onOpenClimate, seasonL
   }
 
   if (device.kind === 'media') {
-    return <MediaPlayerCard layout={layout} media={device} room={room} onPower={actions.mediaPower} onPlayPause={actions.mediaPlayPause} onVolume={actions.mediaVolume} />;
+    return <MediaPlayerCard layout={layout} media={device} room={room} onPower={actions.mediaPower} onPlayPause={actions.mediaPlayPause} onVolume={actions.mediaVolume} onTimerSet={actions.setTimer} onTimerClear={actions.clearTimer} />;
   }
 
   if (isClimate(device)) {
@@ -50,7 +50,7 @@ export function DeviceCard({ device, room, tile, actions, onOpenClimate, seasonL
   }
 
   if (device.kind === 'vacuum') {
-    return <VacuumCard layout={layout} vacuum={device} room={room} onToggle={actions.toggle} onStart={actions.vacuumStart} onPause={actions.vacuumPause} onReturn={actions.vacuumReturn} onLocate={actions.vacuumLocate} onFanSpeed={actions.vacuumFanSpeed} />;
+    return <VacuumCard layout={layout} vacuum={device} room={room} onToggle={actions.toggle} onStart={actions.vacuumStart} onPause={actions.vacuumPause} onReturn={actions.vacuumReturn} onLocate={actions.vacuumLocate} onFanSpeed={actions.vacuumFanSpeed} onTimerSet={actions.setTimer} onTimerClear={actions.clearTimer} />;
   }
 
   if (device.kind === 'switch') {

@@ -16,6 +16,8 @@ import { MusicPage } from './components/MusicPage';
 import { RoomOrderDialog } from './components/RoomOrderDialog';
 import { RoomScene } from './components/RoomScene';
 import { RoomStatusSummary } from './components/RoomStatusSummary';
+import { TimersDialog } from './components/TimersDialog';
+import type { TimerItem } from './components/TimersDialog';
 import { SceneBoard } from './components/SceneBoard';
 import { SettingsPage } from './components/SettingsPage';
 import { SideNav } from './components/SideNav';
@@ -132,6 +134,14 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
   const [almanacOpen, setAlmanacOpen] = useState(false);
   const [activeList, setActiveList] = useState<ActiveListRequest | null>(null);
   const [batteryOpen, setBatteryOpen] = useState(false);
+  // 首页「正在计时」药丸与列表：home 数据里带 timerEndsAt 的设备（服务端寄存器下发）。
+  const [timersOpen, setTimersOpen] = useState(false);
+  const timerItems = useMemo<TimerItem[]>(() => home.devices.filter((device) => device.timerEndsAt).map((device) => ({
+    id: device.id,
+    name: device.name,
+    roomName: home.rooms.find((room) => room.id === device.roomId)?.name ?? '',
+    endsAt: device.timerEndsAt as number,
+  })), [home]);
   // “正在运行”的全部关闭需要二次确认：第一次点击进入确认状态，3 秒内再点才执行。
   const [confirmAllOff, setConfirmAllOff] = useState(false);
   useEffect(() => {
@@ -542,12 +552,12 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
             {compactActive && page === 'home' ? (
               <div className="hero__pills-row">
                 {heroActions}
-                <HomeStatusSummary home={home} onOpen={setActiveList} onOpenBattery={() => setBatteryOpen(true)} batteryEnabled={server.custom?.battery?.enabled !== false} />
+                <HomeStatusSummary home={home} onOpen={setActiveList} onOpenBattery={() => setBatteryOpen(true)} onOpenTimers={() => setTimersOpen(true)} timersCount={timerItems.length} batteryEnabled={server.custom?.battery?.enabled !== false} />
               </div>
             ) : (
               <>
                 {page === 'room' && <RoomStatusSummary home={home} roomId={selectedRoom.id} onOpen={setActiveList} />}
-                {page === 'home' && <HomeStatusSummary home={home} onOpen={setActiveList} onOpenBattery={() => setBatteryOpen(true)} batteryEnabled={server.custom?.battery?.enabled !== false} />}
+                {page === 'home' && <HomeStatusSummary home={home} onOpen={setActiveList} onOpenBattery={() => setBatteryOpen(true)} onOpenTimers={() => setTimersOpen(true)} timersCount={timerItems.length} batteryEnabled={server.custom?.battery?.enabled !== false} />}
               </>
             )}
           </div>
@@ -635,6 +645,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
       {toast && <div className="toast" role="alert" onClick={() => { clearNotice(); setAppNotice(null); }}>{toast}</div>}
       <ActiveDevicesDialog request={activeList} home={home} actions={actions} canControl={canControl} onClose={() => setActiveList(null)} />
       {batteryOpen && <BatteryDialog batteries={home.batteries} home={home} onClose={() => setBatteryOpen(false)} />}
+      {timersOpen && <TimersDialog timers={timerItems} onClose={() => setTimersOpen(false)} onClear={deviceActions.clearTimer} />}
       <WeatherDialog open={weatherOpen} weather={weather} now={now} onClose={() => setWeatherOpen(false)} />
       <AlmanacDialog open={almanacOpen} almanac={almanac} onClose={() => setAlmanacOpen(false)} />
       <ClimateDialog climate={selectedClimate} room={selectedClimate && roomOf(selectedClimate)} actions={actions} onClose={() => setSelectedClimateId(null)} />

@@ -4,6 +4,7 @@ import { climateTone } from '../appearance';
 import { autoFirst, fanModeLabel, hvacModeLabel } from '../climate';
 import { openModalQuietly, releasePointerFocus } from '../focus';
 import type { ClimateDevice, DeviceActions, Room } from '../types';
+import { DelayTimerBlock } from './DelayTimer';
 
 interface ClimateDialogProps {
   /** 要设置的空调或地暖；为空时弹窗关闭。 */
@@ -73,6 +74,7 @@ export function ClimateDialog({ climate, room, actions, onClose }: ClimateDialog
             </div>
           </div>
         )}
+        <DelayTimerBlock device={climate} armed={climate.available && climate.on} onSet={actions.setTimer} onClear={actions.clearTimer} />
       </>}
     </dialog>
   );

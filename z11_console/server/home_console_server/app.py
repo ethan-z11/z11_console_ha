@@ -712,8 +712,9 @@ class ConsoleServer:
         return dict(self._timers)
 
     def _entity_is_on(self, entity_id: str) -> bool:
+        """通用“开机”判断：除明确的关闭/待机/不可用状态外都算开启（灯、插座、空调、电视、扫地机、窗帘等）。"""
         state = self.upstream.states.get(entity_id) or {}
-        return str(state.get("state", "")).strip().lower() in ("on", "open", "opening")
+        return str(state.get("state", "")).strip().lower() not in ("off", "unavailable", "unknown", "idle", "docked", "standby")
 
     async def _timer_loop(self) -> None:
         """每秒巡检延时寄存器：到期即关闭设备；设备已被其它方式关闭 / 移出控制台则作废计时（不补关）。"""
@@ -730,7 +731,7 @@ class ConsoleServer:
                         self._timers.pop(entity_id, None)
                         removed = True
                         try:
-                            await self.upstream.call_service(entity_id.split(".")[0], "turn_off", entity_id, {})
+                            await self.upstream.call_service("homeassistant", "turn_off", entity_id, {})
                         except Exception as error:
                             log.warning("延时关闭 %s 失败：%s", entity_id, error)
                 if removed:
@@ -751,7 +752,7 @@ class ConsoleServer:
             seconds = int(body.get("seconds") or 0)
         except (TypeError, ValueError):
             return web.json_response({"error": "时长无效"}, status=400)
-        if entity_id.split(".")[0] not in ("light", "switch", "fan", "cover") or entity_id not in self.visible:
+        if entity_id not in self.visible:
             return web.json_response({"error": "不支持的实体"}, status=400)
         if not 10 <= seconds <= 24 * 3600:
             return web.json_response({"error": "时长超出范围"}, status=400)
