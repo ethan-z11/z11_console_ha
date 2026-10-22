@@ -506,6 +506,9 @@ strong { font-weight: 600; }
 .tile--hk .tile__power { width: 38px; height: 38px; }
 .tile--hk .light-card__compact-bottom { flex: 1; min-width: 0; align-items: center; }
 .tile--hk .tile__room { order: 3; margin-left: auto; font-size: 10px; }
+/* HomeKit 卡更窄：名称与状态一律单行省略，杜绝挤压换行 */
+.tile--hk .tile__name { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile--hk .tile__note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tile__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .tile__chip { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 13px; background: var(--surface-2); color: var(--text-2); box-shadow: var(--highlight); transition: background-color .25s, color .25s; }
 .tile--active .tile__chip { background: color-mix(in srgb, var(--glow) 18%, transparent); color: var(--glow); }
@@ -520,7 +523,7 @@ strong { font-weight: 600; }
 .tile--openable { cursor: pointer; }
 .tile .tile__power, .climate-card__power { position: relative; }
 .tile .tile__power::after, .climate-card__power::after { position: absolute; inset: -10px; border-radius: 50%; content: ''; }
-.tile__name { display: block; overflow-wrap: anywhere; font-size: 16px; font-weight: 600; line-height: 1.25; }
+.tile__name { display: block; overflow-wrap: anywhere; font-size: 14px; font-weight: 600; line-height: 1.25; }
 .tile__note { display: block; margin-top: 3px; color: var(--text-2); font-size: 12px; line-height: 1.35; }
 .tile--active .tile__note { color: color-mix(in srgb, var(--glow) 55%, var(--text-2)); }
 

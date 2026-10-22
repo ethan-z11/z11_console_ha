@@ -1064,7 +1064,7 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
           <button type="button" role="switch" className="settings-switch" aria-checked={compactLayout} aria-label="紧凑排版" onClick={() => writeCompactLayout(!compactLayout)}><span /></button>
         </div>
         <div className="settings-row">
-          <span><strong>HomeKit 卡片比例</strong><small style={{ display: 'block', color: 'var(--text-2)', fontSize: '12px', fontWeight: 400 }}>仅对当前设备生效。房间与「正在运行」里的灯、开关、风扇卡片改为 HomeKit 宽扁比例（约 2.4:1），大卡片同宽、两倍高；已开的灯直接显示亮度百分比，有色温再显示 K 值；这三类卡片长按弹出设置，卡上不再放齿轮按钮。</small></span>
+          <span><strong>HomeKit 卡片比例</strong><small style={{ display: 'block', color: 'var(--text-2)', fontSize: '12px', fontWeight: 400 }}>仅对当前设备生效。只建议移动端打开</small></span>
           <button type="button" role="switch" className="settings-switch" aria-checked={homekitTiles} aria-label="HomeKit 卡片比例" onClick={() => writeHomekitTiles(!homekitTiles)}><span /></button>
         </div>
         <div className="settings-row">
