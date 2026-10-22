@@ -501,14 +501,14 @@ strong { font-weight: 600; }
 .adaptive-grid--hk .tile:not(.tile--hk) { grid-row: span 2; }
 .adaptive-grid--hk .tile--hk.tile--2x1 { grid-column: span 1; grid-row: span 2; }
 /* HomeKit 卡内容改横排：电源钮 + 名称/状态 + 右侧房间名（字体缩小一点） */
-.tile--hk { flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; padding: 9px 14px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.tile--hk { flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; padding: 9px 14px; position: relative; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .tile--hk .tile__top { display: contents; }
 .tile--hk .tile__power { width: 38px; height: 38px; }
 .tile--hk .light-card__compact-bottom { flex: 1; min-width: 0; align-items: center; }
-.tile--hk .tile__room { order: 3; margin-left: auto; font-size: 10px; }
-/* HomeKit 卡更窄：名称与状态一律单行省略，杜绝挤压换行 */
+/* HomeKit 卡更窄：名称与状态一律单行省略；房间名绝对定位右上角，不挤占内容列，保证「34% · 3500K」这类状态完整显示 */
 .tile--hk .tile__name { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tile--hk .tile__note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile--hk .tile__note { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile--hk .tile__room { position: absolute; top: 7px; right: 10px; font-size: 10px; }
 .tile__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .tile__chip { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 13px; background: var(--surface-2); color: var(--text-2); box-shadow: var(--highlight); transition: background-color .25s, color .25s; }
 .tile--active .tile__chip { background: color-mix(in srgb, var(--glow) 18%, transparent); color: var(--glow); }
