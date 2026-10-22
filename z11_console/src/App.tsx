@@ -111,7 +111,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
   const server = useConsole();
   const live = server.status?.dataSource === 'live';
   const { home: sourceHome, runningIds, actions: deviceActions, refreshRunning, reset, notice, clearNotice } = useHome(
-    live ? { entityStates: server.entityStates, catalogue: server.catalogue, custom: server.custom, callService: server.callService } : null,
+    live ? { entityStates: server.entityStates, catalogue: server.catalogue, custom: server.custom, callService: server.callService, timers: server.timers } : null,
   );
   const [page, setPage] = useState<Page>('home');
   const [selectedRoomId, setSelectedRoomId] = useState('living');

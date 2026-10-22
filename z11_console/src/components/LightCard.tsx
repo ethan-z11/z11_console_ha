@@ -6,6 +6,7 @@ import { deviceIcon, lightGlow } from '../appearance';
 import { releasePointerFocus } from '../focus';
 import { getLightVariant, supportsColor, supportsColorTemperature } from '../light';
 import type { LightDevice, LightPatch, Room } from '../types';
+import { DelayTimerBlock } from './DelayTimer';
 import { TileFrame } from './TileFrame';
 import type { TileLayoutProps } from './TileFrame';
 
@@ -73,9 +74,13 @@ interface LightCardProps {
   childDevices?: LightDevice[];
   /** 在宿主设置弹窗里渲染子灯时隐藏颜色浮层入口（弹窗是原生顶层，portal 颜色面板会被盖住）。 */
   hidePalette?: boolean;
+  /** 延时关闭（设置弹窗内）：seconds 秒后由服务端关闭设备。 */
+  onTimerSet: (id: string, seconds: number) => void;
+  /** 提前取消延时关闭。 */
+  onTimerClear: (id: string) => void;
 }
 
-export function LightCard({ layout, light, room, onToggle, onChange, childDevices, hidePalette }: LightCardProps) {
+export function LightCard({ layout, light, room, onToggle, onChange, childDevices, hidePalette, onTimerSet, onTimerClear }: LightCardProps) {
   const { size, editing, hkTiles: hk } = layout;
   const DeviceIcon = deviceIcon(light);
   const variant = getLightVariant(light);
@@ -200,10 +205,11 @@ export function LightCard({ layout, light, room, onToggle, onChange, childDevice
         <span className="light-detail-dialog__children-title">子灯</span>
         <div className="light-detail-dialog__children-grid">
           {childLights.map((child) => (
-            <LightCard key={child.id} layout={{ id: child.id, label: `${room.name}${child.name}`, size: '2x1' }} light={child} room={room} onToggle={onToggle} onChange={onChange} hidePalette />
+            <LightCard key={child.id} layout={{ id: child.id, label: `${room.name}${child.name}`, size: '2x1', hkTiles: hk }} light={child} room={room} onToggle={onToggle} onChange={onChange} hidePalette onTimerSet={onTimerSet} onTimerClear={onTimerClear} />
           ))}
         </div>
       </div>}
+      <DelayTimerBlock device={light} armed={light.available && light.on} onSet={onTimerSet} onClear={onTimerClear} />
     </dialog>, document.body)}
     </>
   );

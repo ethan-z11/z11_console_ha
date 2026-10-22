@@ -30,7 +30,7 @@ export function DeviceCard({ device, room, tile, actions, onOpenClimate, seasonL
   const layout: TileLayoutProps = { ...tile, id: device.id, label: `${room.name}${device.name}`, allowedSizes: allowedSizesForDevice(device) };
 
   if (device.kind === 'light') {
-    return <LightCard layout={layout} light={device} room={room} onToggle={actions.toggle} onChange={actions.changeLight} childDevices={childDevices?.filter((item): item is LightDevice => item.kind === 'light')} />;
+    return <LightCard layout={layout} light={device} room={room} onToggle={actions.toggle} onChange={actions.changeLight} childDevices={childDevices?.filter((item): item is LightDevice => item.kind === 'light')} onTimerSet={actions.setTimer} onTimerClear={actions.clearTimer} />;
   }
 
   if (device.kind === 'media') {
@@ -42,11 +42,11 @@ export function DeviceCard({ device, room, tile, actions, onOpenClimate, seasonL
   }
 
   if (device.kind === 'fan') {
-    return <FanCard layout={layout} fan={device} room={room} onToggle={actions.toggle} onSpeed={actions.changeFanSpeed} onPreset={actions.changeFanPreset} onOscillate={actions.setFanOscillate} />;
+    return <FanCard layout={layout} fan={device} room={room} onToggle={actions.toggle} onSpeed={actions.changeFanSpeed} onPreset={actions.changeFanPreset} onOscillate={actions.setFanOscillate} onTimerSet={actions.setTimer} onTimerClear={actions.clearTimer} />;
   }
 
   if (device.kind === 'cover') {
-    return <CoverCard layout={layout} cover={device} room={room} onOpen={actions.coverOpen} onClose={actions.coverClose} onStop={actions.coverStop} onPosition={actions.coverPosition} childDevices={childDevices?.filter((item): item is CoverDevice => item.kind === 'cover')} />;
+    return <CoverCard layout={layout} cover={device} room={room} onOpen={actions.coverOpen} onClose={actions.coverClose} onStop={actions.coverStop} onPosition={actions.coverPosition} childDevices={childDevices?.filter((item): item is CoverDevice => item.kind === 'cover')} onTimerSet={actions.setTimer} onTimerClear={actions.clearTimer} />;
   }
 
   if (device.kind === 'vacuum') {
@@ -54,7 +54,7 @@ export function DeviceCard({ device, room, tile, actions, onOpenClimate, seasonL
   }
 
   if (device.kind === 'switch') {
-    return <SwitchCard layout={layout} device={device} room={room} onToggle={actions.toggle} />;
+    return <SwitchCard layout={layout} device={device} room={room} onToggle={actions.toggle} onTimerSet={actions.setTimer} onTimerClear={actions.clearTimer} />;
   }
 
   return null;

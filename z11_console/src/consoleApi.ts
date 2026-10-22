@@ -18,7 +18,7 @@ export interface AdminSettings {
   seasonRules: boolean;
   /** 音乐页内嵌地址；为空表示未配置。 */
   musicUrl: string;
-  /** go2rtc 流媒体服务地址；为空时摄像头走本机 ffmpeg 转 MJPEG。 */
+  /** go2rtc 流媒体服务地址；为空表示用本机 ffmpeg 转码。 */
   go2rtcUrl: string;
   /** “一键关闭”可关的设备类别；默认只有灯。 */
   allOffKinds: string[];
@@ -26,7 +26,7 @@ export interface AdminSettings {
   allOffScopes: string[];
   /** “一键关闭”额外指定的实体 ID。 */
   allOffEntities: string[];
-  /** “一键关闭”要排除的实体 ID。 */
+  /** “一键关闭”排除的实体 ID。 */
   allOffExcludes: string[];
   /** 人员在家配置列表。 */
   people: PersonConfig[];
@@ -207,3 +207,8 @@ export interface AutomationList {
 
 export const getAutomations = () => request<AutomationList>('/api/admin/automations');
 export const setAutomation = (id: string, enabled: boolean) => request<{ ok: true; id: string; state: string }>('/api/admin/automations', 'PUT', { id, enabled });
+
+/** 设置设备延时关闭：seconds 秒后由服务端关闭该设备（设备被其它方式关闭时服务端自动作废计时）。 */
+export const setDeviceTimer = (entity: string, seconds: number) => request<{ ok: true; endsAt: number }>('/api/device-timer', 'POST', { entity, seconds });
+/** 提前取消延时关闭（不改变设备当前状态）。 */
+export const clearDeviceTimer = (entity: string) => request<{ ok: true }>('/api/device-timer', 'DELETE', { entity });

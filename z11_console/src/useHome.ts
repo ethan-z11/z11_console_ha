@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Catalogue, CustomConfig, EntityState } from './consoleClient';
+import { clearDeviceTimer, setDeviceTimer } from './consoleApi';
 import { applyCommand } from './deviceCommands';
 import type { DeviceCommand } from './deviceCommands';
 import { liveHome, serviceCall } from './haAdapter';
@@ -63,6 +64,8 @@ interface LiveSource {
   /** 手动房间、设备归属与情景按钮配置。 */
   custom: CustomConfig | null;
   callService: (entity: string, service: string, data: Record<string, unknown>) => Promise<void>;
+  /** 延时关闭寄存器（服务端权威）：实体 id → 到期时间（epoch 毫秒）。 */
+  timers?: Record<string, number> | null;
 }
 
 /**
@@ -83,8 +86,13 @@ export function useHome(live: LiveSource | null) {
   const expectRef = useRef(new Map<string, Expectation>());
 
   /** 用 HA 状态生成页面数据，但尚未确认的操作仍显示目标值，避免开关先跳回旧状态再跳到新状态的闪烁。 */
-  const mergeLive = useCallback((catalogueValue: Catalogue | null, states: Map<string, EntityState>, previous: HomeState, customValue: CustomConfig | null): HomeState =>
-    overlayExpectations(liveHome(catalogueValue, states, previous, customValue), expectRef.current, Date.now()), []);
+  const mergeLive = useCallback((catalogueValue: Catalogue | null, states: Map<string, EntityState>, previous: HomeState, customValue: CustomConfig | null, timersValue?: Record<string, number> | null): HomeState => {
+    const base = overlayExpectations(liveHome(catalogueValue, states, previous, customValue), expectRef.current, Date.now());
+    if (!timersValue) return base;
+    const timed = base.devices.some((device) => Boolean(timersValue[device.id]));
+    if (!timed) return base;
+    return { ...base, devices: base.devices.map((device) => (timersValue[device.id] ? { ...device, timerEndsAt: timersValue[device.id] } : device)) };
+  }, []);
   const isLive = live !== null;
   const entityStates = live?.entityStates;
   const catalogue = live?.catalogue;
@@ -141,8 +149,8 @@ export function useHome(live: LiveSource | null) {
 
   useEffect(() => {
     if (!isLive || !entityStates) return;
-    setHome((previous) => mergeLive(catalogue ?? null, entityStates, previous, custom));
-  }, [isLive, entityStates, catalogue, custom, mergeLive]);
+    setHome((previous) => mergeLive(catalogue ?? null, entityStates, previous, custom, live?.timers ?? null));
+  }, [isLive, entityStates, catalogue, custom, mergeLive, live?.timers]);
 
   function callHa(device: Device, command: DeviceCommand) {
     const call = serviceCall(device, command);
@@ -213,6 +221,30 @@ export function useHome(live: LiveSource | null) {
     vacuumReturn: (id) => dispatch(id, { type: 'vacuumReturn' }),
     vacuumLocate: (id) => dispatch(id, { type: 'vacuumLocate' }),
     vacuumFanSpeed: (id, fanSpeed) => dispatch(id, { type: 'vacuumFanSpeed', fanSpeed }),
+    // 延时关闭：HA 模式交给服务端寄存器（权威，随 WS 广播回填页面）；演示模式本地模拟到期关闭。
+    setTimer: (id, seconds) => {
+      const device = homeRef.current.devices.find((item) => item.id === id);
+      if (!device) return;
+      if (isLive) {
+        setDeviceTimer(id, seconds).catch((error: Error) => setNotice(`${device.name}延时关闭设置失败：${error.message}`));
+        return;
+      }
+      const endsAt = Date.now() + seconds * 1000;
+      setHome((previous) => ({ ...previous, devices: previous.devices.map((item) => (item.id === id ? { ...item, timerEndsAt: endsAt } : item)) }));
+      window.setTimeout(() => {
+        const current = homeRef.current.devices.find((item) => item.id === id);
+        if (current?.timerEndsAt === endsAt) dispatch(id, { type: 'turnOff' });
+      }, seconds * 1000);
+    },
+    clearTimer: (id) => {
+      const device = homeRef.current.devices.find((item) => item.id === id);
+      if (!device) return;
+      if (isLive) {
+        clearDeviceTimer(id).catch(() => undefined);
+        return;
+      }
+      setHome((previous) => ({ ...previous, devices: previous.devices.map((item) => (item.id === id && item.timerEndsAt ? { ...item, timerEndsAt: undefined } : item)) }));
+    },
   };
 
   /** 进入全屋时调用：移出已关闭的设备，只保留当前正在运行的。 */
@@ -256,4 +288,6 @@ export const readOnlyActions: DeviceActions = {
   vacuumReturn: ignore,
   vacuumLocate: ignore,
   vacuumFanSpeed: ignore,
+  setTimer: ignore,
+  clearTimer: ignore,
 };

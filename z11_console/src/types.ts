@@ -17,6 +17,8 @@ interface BaseDevice {
   icon?: string;
   /** 子设备（绑定在灯 / 窗帘宿主下）：不单独显示卡片，只在宿主的设置弹窗里以大卡片展示与控制。 */
   hidden?: boolean;
+  /** 延时关闭到期时间（epoch 毫秒）；由服务端寄存器下发，设备被其它方式关闭时服务端立即作废。 */
+  timerEndsAt?: number;
 }
 
 export interface LightDevice extends BaseDevice {
@@ -177,6 +179,10 @@ export interface DeviceActions {
   vacuumReturn: (id: string) => void;
   vacuumLocate: (id: string) => void;
   vacuumFanSpeed: (id: string, fanSpeed: string) => void;
+  /** 延时关闭：seconds 秒后由服务端关闭该设备；仅灯 / 开关 / 风扇 / 窗帘可用。 */
+  setTimer: (id: string, seconds: number) => void;
+  /** 提前取消延时关闭（不改变设备当前状态）。 */
+  clearTimer: (id: string) => void;
 }
 
 export interface LayoutState {

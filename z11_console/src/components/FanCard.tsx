@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { deviceIcon } from '../appearance';
 import { releasePointerFocus } from '../focus';
 import type { FanDevice, Room } from '../types';
+import { DelayTimerBlock } from './DelayTimer';
 import { TileFrame } from './TileFrame';
 import type { TileLayoutProps } from './TileFrame';
 
@@ -16,10 +17,14 @@ interface FanCardProps {
   onSpeed: (id: string, percentage: number) => void;
   onPreset: (id: string, preset: string) => void;
   onOscillate: (id: string, oscillating: boolean) => void;
+  /** 延时关闭（设置弹窗内）：seconds 秒后由服务端关闭设备。 */
+  onTimerSet: (id: string, seconds: number) => void;
+  /** 提前取消延时关闭。 */
+  onTimerClear: (id: string) => void;
 }
 
 /** 风扇 / 新风机卡片：开关 + 百分比风速滑杆 + 预设风类（直吹风 / 自然风 / 进风 等）+ 摇头开关。 */
-export function FanCard({ layout, fan, room, onToggle, onSpeed, onPreset, onOscillate }: FanCardProps) {
+export function FanCard({ layout, fan, room, onToggle, onSpeed, onPreset, onOscillate, onTimerSet, onTimerClear }: FanCardProps) {
   const { size, editing, hkTiles: hk } = layout;
   const DeviceIcon = deviceIcon(fan);
   const adjustable = fan.percentage !== undefined;
@@ -107,6 +112,7 @@ export function FanCard({ layout, fan, room, onToggle, onSpeed, onPreset, onOsci
         {canOscillate && <div className="fan-card__dialog-presets"><span>摇头</span>{oscillateButton}</div>}
         {presetButtons && <div className="fan-card__dialog-presets"><span>风类</span><div className="fan-card__presets">{presetButtons}</div></div>}
       </div>
+      <DelayTimerBlock device={fan} armed={fan.available && fan.on} onSet={onTimerSet} onClear={onTimerClear} />
     </dialog>, document.body)}
     </>
   );

@@ -195,6 +195,9 @@ class ConsoleServer:
         self.limiter = LoginLimiter()
         self.clients: set[web.WebSocketResponse] = set()
         self._tasks: set[asyncio.Task[None]] = set()
+        # 设备延时关闭寄存器：entity_id → 到期时间（epoch 毫秒）。仅存内存，重启即清空；设备被其它方式关闭时立即作废。
+        self._timers: dict[str, int] = {}
+        self._timer_task: asyncio.Task[None] | None = None
         self.upstream = HaUpstream(self._on_status, self._on_states, self._on_registry)
         self.weather = Weather()
         self.almanac = Almanac()
@@ -269,6 +272,13 @@ class ConsoleServer:
         visible_changed = {entity_id: state for entity_id, state in changed.items() if entity_id in self.visible}
         if visible_changed:
             await self.broadcast({"type": "entities", "changed": visible_changed})
+        # 计时中的设备被其它方式关闭：立即作废本次计时并同步到页面（页面随即隐藏倒计时，设备再次打开也不会误关）。
+        if any(entity_id in self._timers and not self._entity_is_on(entity_id) for entity_id in changed):
+            dropped = [entity_id for entity_id in self._timers if not self._entity_is_on(entity_id)]
+            for entity_id in dropped:
+                self._timers.pop(entity_id, None)
+            if dropped:
+                await self.broadcast({"type": "timers", "timers": self._timers_public()})
 
     async def _on_registry(self) -> None:
         self.schedule_refresh(fetch=True)
@@ -696,6 +706,72 @@ class ConsoleServer:
             except ConnectionError:
                 self.clients.discard(client)
 
+    # ---------- 设备延时关闭 ----------
+
+    def _timers_public(self) -> dict[str, int]:
+        return dict(self._timers)
+
+    def _entity_is_on(self, entity_id: str) -> bool:
+        state = self.upstream.states.get(entity_id) or {}
+        return str(state.get("state", "")).strip().lower() in ("on", "open", "opening")
+
+    async def _timer_loop(self) -> None:
+        """每秒巡检延时寄存器：到期即关闭设备；设备已被其它方式关闭 / 移出控制台则作废计时（不补关）。"""
+        while True:
+            try:
+                await asyncio.sleep(1)
+                removed = False
+                now_ms = int(time.time() * 1000)
+                for entity_id, ends_at in list(self._timers.items()):
+                    if entity_id not in self.visible or not self._entity_is_on(entity_id):
+                        self._timers.pop(entity_id, None)  # 已被其它方式关闭：只作废计时，不再发关闭指令
+                        removed = True
+                    elif now_ms >= ends_at:
+                        self._timers.pop(entity_id, None)
+                        removed = True
+                        try:
+                            await self.upstream.call_service(entity_id.split(".")[0], "turn_off", entity_id, {})
+                        except Exception as error:
+                            log.warning("延时关闭 %s 失败：%s", entity_id, error)
+                if removed:
+                    await self.broadcast({"type": "timers", "timers": self._timers_public()})
+            except asyncio.CancelledError:
+                raise
+            except Exception as error:
+                log.warning("延时关闭巡检异常：%s", error)
+
+    async def device_timer_set(self, request: web.Request) -> web.Response:
+        self._require_login(request)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "参数无效"}, status=400)
+        entity_id = str(body.get("entity", ""))
+        try:
+            seconds = int(body.get("seconds") or 0)
+        except (TypeError, ValueError):
+            return web.json_response({"error": "时长无效"}, status=400)
+        if entity_id.split(".")[0] not in ("light", "switch", "fan", "cover") or entity_id not in self.visible:
+            return web.json_response({"error": "不支持的实体"}, status=400)
+        if not 10 <= seconds <= 24 * 3600:
+            return web.json_response({"error": "时长超出范围"}, status=400)
+        if not self._entity_is_on(entity_id):
+            return web.json_response({"error": "设备未开启"}, status=409)
+        ends_at = int(time.time() * 1000) + seconds * 1000
+        self._timers[entity_id] = ends_at
+        await self.broadcast({"type": "timers", "timers": self._timers_public()})
+        return web.json_response({"ok": True, "endsAt": ends_at})
+
+    async def device_timer_clear(self, request: web.Request) -> web.Response:
+        self._require_login(request)
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "参数无效"}, status=400)
+        if self._timers.pop(str(body.get("entity", "")), None) is not None:
+            await self.broadcast({"type": "timers", "timers": self._timers_public()})
+        return web.json_response({"ok": True})
+
     # ---------- 浏览器 WebSocket ----------
 
     async def handle_ws(self, request: web.Request) -> web.WebSocketResponse:
@@ -714,7 +790,7 @@ class ConsoleServer:
             await ws.send_json({"type": "hello", "layout": self.store.layout, "catalogue": self.catalogue(), "custom": self.public_custom()})
             await ws.send_json(self.status_message())
             states = {entity_id: self.upstream.states[entity_id] for entity_id in self.visible if entity_id in self.upstream.states}
-            await ws.send_json({"type": "entities", "changed": states, "snapshot": True})
+            await ws.send_json({"type": "entities", "changed": states, "snapshot": True, "timers": self._timers_public()})
             async for message in ws:
                 if message.type != WSMsgType.TEXT:
                     continue
@@ -1390,6 +1466,8 @@ def create_app(data_dir: Path, static_dir: Path | None) -> web.Application:
                 immutable = "assets/" in path.as_posix()
                 return web.FileResponse(path, headers={"Cache-Control": "public, max-age=31536000, immutable" if immutable else "no-cache"})
             return web.FileResponse(static_dir / "index.html", headers={"Cache-Control": "no-cache"})
+        app.router.add_post("/api/device-timer", console.device_timer_set)
+        app.router.add_delete("/api/device-timer", console.device_timer_clear)
         app.router.add_get("/{tail:(?!api/|go2rtc/).*}", spa)
 
     async def on_startup(_app: web.Application) -> None:
@@ -1398,6 +1476,7 @@ def create_app(data_dir: Path, static_dir: Path | None) -> web.Application:
         # 总开关关闭时不启动任何监测，但 cleanup 仍会运行（继续清理过期截图）。
         cameras = console.store.custom.get("cameras", []) if console.store.settings.motion_capture else []
         await console.motion.start(cameras)
+        console._timer_task = asyncio.create_task(console._timer_loop())
 
     async def on_shutdown(_app: web.Application) -> None:
         # 先关闭页面的 WebSocket：否则 aiohttp 会等这些长连接自行结束（默认最长 60 秒），停止或重启服务时就会卡住。
@@ -1405,6 +1484,8 @@ def create_app(data_dir: Path, static_dir: Path | None) -> web.Application:
             await client.close(code=1001, message=b"server shutdown")
 
     async def on_cleanup(_app: web.Application) -> None:
+        if console._timer_task is not None:
+            console._timer_task.cancel()
         await console.upstream.stop()
         await console.weather.close()
         await console.motion.stop_all()

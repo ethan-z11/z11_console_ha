@@ -201,7 +201,8 @@ export type ServerLayout = Omit<LayoutState, 'favorites' | 'rooms'> & { favorite
 type ServerMessage =
   | { type: 'hello'; catalogue: Catalogue; layout: ServerLayout; custom: CustomConfig }
   | ({ type: 'status' } & ServerStatus)
-  | { type: 'entities'; changed: Record<string, EntityState | null>; snapshot?: boolean }
+  | { type: 'entities'; changed: Record<string, EntityState | null>; snapshot?: boolean; timers?: Record<string, number> }
+  | { type: 'timers'; timers: Record<string, number> }
   | { type: 'layout'; layout: ServerLayout }
   | { type: 'catalogue'; catalogue: Catalogue }
   | { type: 'custom'; custom: CustomConfig }
@@ -212,7 +213,9 @@ interface ConsoleClientHandlers {
   onConnection: (connected: boolean) => void;
   onHello: (catalogue: Catalogue, layout: ServerLayout, custom: CustomConfig) => void;
   onStatus: (status: ServerStatus) => void;
-  onEntities: (changed: Record<string, EntityState | null>, snapshot: boolean) => void;
+  onEntities: (changed: Record<string, EntityState | null>, snapshot: boolean, timers?: Record<string, number>) => void;
+  /** 延时关闭寄存器变化（设置 / 取消 / 到期 / 设备被其它方式关闭时作废）。 */
+  onTimers: (timers: Record<string, number>) => void;
   onLayout: (layout: ServerLayout) => void;
   onCatalogue: (catalogue: Catalogue) => void;
   onCustom: (custom: CustomConfig) => void;
@@ -359,7 +362,8 @@ export class ConsoleClient {
       case 'status': this.handlers.onStatus({ dataSource: message.dataSource, controlEnabled: message.controlEnabled, motionCapture: message.motionCapture, homeTitle: message.homeTitle, brandTitle: message.brandTitle, theme: message.theme, tileScale: message.tileScale, accent: message.accent, season: message.season, musicUrl: message.musicUrl, allOffKinds: message.allOffKinds, allOffScopes: message.allOffScopes, allOffEntities: message.allOffEntities, allOffExcludes: message.allOffExcludes, weatherPlace: message.weatherPlace, people: message.people, go2rtc: message.go2rtc, occupancy: message.occupancy, ha: message.ha }); return;
       case 'catalogue': this.handlers.onCatalogue(message.catalogue); return;
       case 'custom': this.handlers.onCustom(message.custom); return;
-      case 'entities': this.handlers.onEntities(message.changed, Boolean(message.snapshot)); return;
+      case 'entities': this.handlers.onEntities(message.changed, Boolean(message.snapshot), message.timers); return;
+      case 'timers': this.handlers.onTimers(message.timers); return;
       case 'layout': this.handlers.onLayout(message.layout); return;
       case 'pong': window.clearTimeout(this.pongTimer); this.pongTimer = 0; return;
       case 'result': {

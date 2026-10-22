@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { deviceIcon } from '../appearance';
 import { releasePointerFocus } from '../focus';
 import type { CoverDevice, Room } from '../types';
+import { DelayTimerBlock } from './DelayTimer';
 import { TileFrame } from './TileFrame';
 import type { TileLayoutProps } from './TileFrame';
 
@@ -18,10 +19,14 @@ interface CoverCardProps {
   onPosition: (id: string, position: number) => void;
   /** 绑定的子窗帘：显示在设置弹窗里（大卡片）；宿主卡片因此获得设置按钮。 */
   childDevices?: CoverDevice[];
+  /** 延时关闭（设置弹窗内）：seconds 秒后由服务端关闭窗帘。 */
+  onTimerSet: (id: string, seconds: number) => void;
+  /** 提前取消延时关闭。 */
+  onTimerClear: (id: string) => void;
 }
 
 /** 窗帘 / 卷帘卡片：开合开关、位置滑杆（0 全关 - 100 全开）与停止。 */
-export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosition, childDevices }: CoverCardProps) {
+export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosition, childDevices, onTimerSet, onTimerClear }: CoverCardProps) {
   const { size, editing, hkTiles: hk } = layout;
   const DeviceIcon = deviceIcon(cover);
   // HomeKit 模式：一律用小卡紧凑排版（横排内容 + 长按弹设置），大卡不再内嵌滑杆与三按钮。
@@ -115,10 +120,11 @@ export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosi
         <span className="light-detail-dialog__children-title">子窗帘</span>
         <div className="light-detail-dialog__children-grid">
           {childCovers.map((child) => (
-            <CoverCard key={child.id} layout={{ id: child.id, label: `${room.name}${child.name}`, size: '2x1' }} cover={child} room={room} onOpen={onOpen} onClose={onClose} onStop={onStop} onPosition={onPosition} />
+            <CoverCard key={child.id} layout={{ id: child.id, label: `${room.name}${child.name}`, size: '2x1', hkTiles: hk }} cover={child} room={room} onOpen={onOpen} onClose={onClose} onStop={onStop} onPosition={onPosition} onTimerSet={onTimerSet} onTimerClear={onTimerClear} />
           ))}
         </div>
       </div>}
+      <DelayTimerBlock device={cover} armed={cover.available && (cover.state === 'open' || cover.state === 'opening')} onSet={onTimerSet} onClear={onTimerClear} />
     </dialog>, document.body)}
     </>
   );

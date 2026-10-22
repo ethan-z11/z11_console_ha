@@ -51,6 +51,8 @@ export function useConsole() {
   const [catalogue, setCatalogue] = useState<Catalogue | null>(cache?.catalogue ?? null);
   const [custom, setCustom] = useState<CustomConfig | null>(cache?.custom ?? null);
   const [entityStates, setEntityStates] = useState<Map<string, EntityState>>(() => new Map(cache?.entities));
+  // 延时关闭寄存器：实体 id → 到期时间（epoch 毫秒）。快照/变化由后端推送，页面刷新或重连后自动恢复。
+  const [timers, setTimers] = useState<Record<string, number>>({});
   const [layout, setLayout] = useState<ServerLayout | null>(null);
   const [staleSince, setStaleSince] = useState<number | null>(cache?.savedAt ?? null);
   const [offlineSince, setOfflineSince] = useState<number | null>(() => Date.now());
@@ -84,8 +86,9 @@ export function useConsole() {
         setCustom(nextCustom);
       },
       onStatus: setStatus,
-      onEntities: (changed, snapshot) => {
+      onEntities: (changed, snapshot, timers) => {
         if (snapshot) setStaleSince(null);
+        if (timers) setTimers(timers);
         setEntityStates((previous) => {
           const next = snapshot ? new Map<string, EntityState>() : new Map(previous);
           for (const [entityId, state] of Object.entries(changed)) {
@@ -96,6 +99,7 @@ export function useConsole() {
         });
       },
       onLayout: setLayout,
+      onTimers: setTimers,
       onCatalogue: setCatalogue,
       onCustom: setCustom,
     });
@@ -145,5 +149,5 @@ export function useConsole() {
     return clientRef.current?.callService(entity, service, data) ?? Promise.reject(new Error('正在重新连接，操作未发送'));
   }
 
-  return { connected, status, catalogue, custom, entityStates, layout, staleSince, offlineSince, callService };
+  return { connected, status, catalogue, custom, entityStates, timers, layout, staleSince, offlineSince, callService };
 }
