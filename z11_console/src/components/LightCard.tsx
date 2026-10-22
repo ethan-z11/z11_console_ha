@@ -206,7 +206,7 @@ export function LightCard({ layout, light, room, onToggle, onChange, childDevice
         <span className="light-detail-dialog__children-title">子灯</span>
         <div className="light-detail-dialog__children-grid">
           {childLights.map((child) => (
-            <LightCard key={child.id} layout={{ id: child.id, label: `${room.name}${child.name}`, size: '2x1', hkTiles: hk }} light={child} room={room} onToggle={onToggle} onChange={onChange} hidePalette onTimerSet={onTimerSet} onTimerClear={onTimerClear} />
+            <LightCard key={child.id} layout={{ id: child.id, label: `${room.name}${child.name}`, size: '2x1', hkTiles: false }} light={child} room={room} onToggle={onToggle} onChange={onChange} hidePalette onTimerSet={onTimerSet} onTimerClear={onTimerClear} />
           ))}
         </div>
       </div>}
