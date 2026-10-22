@@ -22,6 +22,8 @@ export interface TileLayoutProps {
   /** 编辑时显示星标按钮；favorite 表示已在全屋“常用设备”中。 */
   favorite?: boolean;
   onFavoriteToggle?: (id: string) => void;
+  /** HomeKit 卡片比例（本机开关）：小卡约 2.4:1 宽扁、大卡同宽两倍高，由网格与卡片配合使用。 */
+  hkTiles?: boolean;
 }
 
 interface TileFrameProps extends TileLayoutProps {
@@ -32,8 +34,6 @@ interface TileFrameProps extends TileLayoutProps {
   onOpen?: () => void;
   /** HomeKit 风格卡片：长按 500ms 弹出设置（替代卡上的齿轮按钮）；编辑布局时不响应。 */
   onLongPress?: () => void;
-  /** HomeKit 卡片比例（本机开关）：小卡约 2.4:1 宽扁、大卡同宽两倍高，由网格与卡片配合使用。 */
-  hkTiles?: boolean;
   /** 需要直接拿到卡片 DOM 的场景（如可见性观察）。 */
   frameRef?: Ref<HTMLElement>;
   children: ReactNode;
