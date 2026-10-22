@@ -1,11 +1,11 @@
-import { BatteryWarning, DoorOpen, Droplets, Lightbulb, PersonStanding, Radar, ShieldAlert, Thermometer, Waves, Wind } from 'lucide-react';
+import { BatteryWarning, DoorOpen, Droplets, Fan, Hourglass, Lightbulb, PersonStanding, Power, Radar, ShieldAlert, Thermometer, Waves, Wind } from 'lucide-react';
 import { climateSummaryTone, isActiveAlert, isClimate, isLit, isOpenDoor } from '../selectors';
 import type { HomeState, SafetyDevice } from '../types';
 import type { ActiveListRequest } from './ActiveDevicesDialog';
 
 const lowBatteryThreshold = 20;
 
-export function RoomStatusSummary({ home, roomId, onOpen }: { home: HomeState; roomId: string; onOpen: (request: ActiveListRequest) => void }) {
+export function RoomStatusSummary({ home, roomId, onOpen, onOpenTimers }: { home: HomeState; roomId: string; onOpen: (request: ActiveListRequest) => void; onOpenTimers: () => void }) {
   const devices = home.devices.filter((device) => device.roomId === roomId);
   const alerts = devices.filter(isActiveAlert);
   const lit = devices.filter(isLit).length;
@@ -18,6 +18,9 @@ export function RoomStatusSummary({ home, roomId, onOpen }: { home: HomeState; r
   const occupied = motionKnown.some((device) => device.status === 'alert');
   // 只显示正在运行或不可用的空调 / 地暖；关闭的不占位。
   const activeClimate = devices.filter(isClimate).filter((device) => !device.available || device.on);
+  const runningFans = devices.filter((device) => device.kind === 'fan' && device.available && device.on);
+  const runningSwitches = devices.filter((device) => device.kind === 'switch' && device.available && device.on);
+  const timedDevices = devices.filter((device) => device.timerEndsAt);
   const batteries = home.batteries.filter((battery) => battery.roomId === roomId);
   const lowBatteries = batteries.filter((battery) => battery.available && battery.level !== null && battery.level <= lowBatteryThreshold);
   const unknownBatteries = batteries.filter((battery) => !battery.available || battery.level === null);
@@ -26,6 +29,9 @@ export function RoomStatusSummary({ home, roomId, onOpen }: { home: HomeState; r
     <div className="status-row" aria-label="房间状态概览">
       {alerts.map((device) => <span key={device.id} className="status-pill status-pill--alert"><ShieldAlert size={15} />{device.name}报警</span>)}
       {lit > 0 && <button type="button" className="status-pill status-pill--light status-pill--button" onClick={() => onOpen({ kind: 'light', roomId })}><Lightbulb size={15} />{lit} 盏灯亮</button>}
+      {runningFans.length > 0 && <button type="button" className="status-pill status-pill--cool status-pill--button" onClick={() => onOpen({ kind: 'fan', roomId })}><Fan size={15} />{runningFans.length} 台风扇开启</button>}
+      {runningSwitches.length > 0 && <button type="button" className="status-pill status-pill--button" onClick={() => onOpen({ kind: 'switch', roomId })}><Power size={15} />{runningSwitches.length} 个开关打开</button>}
+      {timedDevices.length > 0 && <button type="button" className="status-pill status-pill--heat status-pill--button" onClick={onOpenTimers}><Hourglass size={15} />{timedDevices.length} 项正在计时</button>}
       {temperature?.kind === 'sensor' && <span className={`status-pill${temperature.available ? '' : ' status-pill--warning'}`}><Thermometer size={15} />温度 {temperature.available ? `${temperature.value}${temperature.unit}` : '暂无数据'}</span>}
       {humidity?.kind === 'sensor' && <span className={`status-pill${humidity.available ? '' : ' status-pill--warning'}`}><Droplets size={15} />湿度 {humidity.available ? `${humidity.value}${humidity.unit}` : '暂无数据'}</span>}
       {occupied && <span className="status-pill status-pill--home status-pill--occupied" title={`人体感应：${motions.map((device) => device.name).join('、')}`}><PersonStanding size={15} className="presence-blink" />有人</span>}

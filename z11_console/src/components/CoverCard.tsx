@@ -29,7 +29,8 @@ interface CoverCardProps {
 export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosition, childDevices, onTimerSet, onTimerClear }: CoverCardProps) {
   const { size, editing, hkTiles: hk } = layout;
   const DeviceIcon = deviceIcon(cover);
-  // HomeKit 模式：一律用小卡紧凑排版（横排内容 + 长按弹设置），大卡不再内嵌滑杆与三按钮。
+  // HomeKit 模式：1×1 横排窄卡，2×1 用原版紧凑方形内容，点击按原结构。
+  const hkSmall = Boolean(hk) && size === '1x1';
   const compact = size === '1x1' || Boolean(hk);
   const childCovers = childDevices ?? [];
   const hasChildren = childCovers.length > 0;
@@ -76,7 +77,7 @@ export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosi
 
   return (
     <>
-    <TileFrame {...layout} className={`cover-card${compact ? ' cover-card--compact' : ''}`} active={active} onOpen={compact && cover.available ? toggleCover : undefined} onLongPress={hk && cover.available ? () => setDetailOpen(true) : undefined}>
+    <TileFrame {...layout} hkTiles={hkSmall} className={`cover-card${compact ? ' cover-card--compact' : ''}`} active={active} onOpen={compact && cover.available ? toggleCover : undefined} onLongPress={hkSmall && cover.available ? () => setDetailOpen(true) : undefined}>
       {!compact ? (
         <>
           <div className="tile__top">
@@ -84,7 +85,7 @@ export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosi
             <div className="light-card__identity"><span className="tile__room tile__room--inline" aria-hidden="true">{room.name}</span><span className="tile__name">{cover.name}</span><span className="tile__note">{status}</span></div>
             <span className="tile__room">{room.name}</span>
             {/* HomeKit 模式：齿轮隐藏，长按卡片弹出同样的设置弹窗（含子窗帘大卡片）。 */}
-            {hasChildren && !editing && !hk && <button type="button" className="light-card__settings" onClick={() => setDetailOpen(true)} disabled={!cover.available} aria-label={`设置${label}与它的子窗帘`} aria-haspopup="dialog" aria-controls={detailOpen ? detailId : undefined}><SlidersHorizontal size={18} /></button>}
+            {hasChildren && !editing && !hkSmall && <button type="button" className="light-card__settings" onClick={() => setDetailOpen(true)} disabled={!cover.available} aria-label={`设置${label}与它的子窗帘`} aria-haspopup="dialog" aria-controls={detailOpen ? detailId : undefined}><SlidersHorizontal size={18} /></button>}
           </div>
           <div className="light-card__controls">
             {cover.supportsPosition && <div className="light-card__range cover-card__range">
@@ -103,7 +104,7 @@ export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosi
           </div>
           <div className="cover-card__compact-bottom">
             <div className="light-card__identity"><span className="tile__room tile__room--inline" aria-hidden="true">{room.name}</span><span className="tile__name">{cover.name}</span><span className="tile__note">{status}</span></div>
-            {compact && !editing && !hk && <button type="button" className="light-card__settings" onClick={() => setDetailOpen(true)} disabled={!cover.available} aria-label={`设置${label}开合位置、打开关闭和停止`} aria-haspopup="dialog" aria-controls={detailOpen ? detailId : undefined}><SlidersHorizontal size={18} /></button>}
+            {compact && !editing && !hkSmall && <button type="button" className="light-card__settings" onClick={() => setDetailOpen(true)} disabled={!cover.available} aria-label={`设置${label}开合位置、打开关闭和停止`} aria-haspopup="dialog" aria-controls={detailOpen ? detailId : undefined}><SlidersHorizontal size={18} /></button>}
           </div>
         </>
       )}

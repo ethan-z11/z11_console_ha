@@ -5,7 +5,7 @@ import { openModalQuietly, releasePointerFocus } from '../focus';
 import { isClimate } from '../selectors';
 import type { Device, DeviceActions, HomeState } from '../types';
 
-export type ActiveKind = 'light' | 'climate' | 'heating' | 'fan';
+export type ActiveKind = 'light' | 'climate' | 'heating' | 'fan' | 'switch';
 
 export interface ActiveListRequest {
   kind: ActiveKind;
@@ -18,6 +18,7 @@ const titles: Record<ActiveKind, { on: string; noun: string; icon: typeof Lightb
   climate: { on: '开着的空调', noun: '空调', icon: AirVent },
   heating: { on: '开着的制热', noun: '制热', icon: Waves },
   fan: { on: '开着的风扇', noun: '风扇', icon: Fan },
+  switch: { on: '开着的开关', noun: '开关', icon: Power },
 };
 
 function matches(device: Device, request: ActiveListRequest): boolean {
@@ -41,6 +42,9 @@ function detail(device: Device): string {
   if (device.kind === 'fan') {
     if (!device.on) return '已关闭';
     return [device.percentage !== undefined ? `风速 ${device.percentage}%` : '', device.presetMode ?? ''].filter(Boolean).join(' · ') || '已打开';
+  }
+  if (device.kind === 'switch') {
+    return device.on ? '已打开' : '已关闭';
   }
   return '';
 }

@@ -1,4 +1,4 @@
-import { Battery, BatteryFull, BatteryMedium, BatteryWarning, DoorOpen, Droplets, Fan, Hourglass, Lightbulb, ShieldAlert, Thermometer, Waves, Wind } from 'lucide-react';
+import { Battery, BatteryFull, BatteryMedium, BatteryWarning, DoorOpen, Droplets, Fan, Hourglass, Lightbulb, Power, ShieldAlert, Thermometer, Waves, Wind } from 'lucide-react';
 import { isActiveAlert, isLit, isOpenDoor } from '../selectors';
 import type { HomeState } from '../types';
 import type { ActiveListRequest } from './ActiveDevicesDialog';
@@ -21,6 +21,7 @@ export function HomeStatusSummary({ home, onOpen, onOpenBattery, onOpenTimers, t
   const runningAirConditioners = home.devices.filter((device) => device.kind === 'climate' && device.available && device.on).length;
   const runningFloorHeatings = home.devices.filter((device) => device.kind === 'heating' && device.available && device.on).length;
   const runningFans = home.devices.filter((device) => device.kind === 'fan' && device.available && device.on).length;
+  const runningSwitches = home.devices.filter((device) => device.kind === 'switch' && device.available && device.on).length;
   // 设置里“指向主页”的温湿度来源（scope = home），与房间状态摘要同样的药丸样式。
   const temperature = home.devices.find((device) => device.roomId === 'home' && device.kind === 'sensor' && device.metric === 'temperature');
   const humidity = home.devices.find((device) => device.roomId === 'home' && device.kind === 'sensor' && device.metric === 'humidity');
@@ -43,6 +44,7 @@ export function HomeStatusSummary({ home, onOpen, onOpenBattery, onOpenTimers, t
       {openDoors.length > 0 && <span className="status-pill"><DoorOpen size={15} />{openDoors.length <= 2 ? `${openDoors.map((device) => device.name).join('、')}已打开` : `${openDoors.length} 处门窗打开`}</span>}
       {runningFloorHeatings > 0 && <button type="button" className="status-pill status-pill--heat status-pill--button" onClick={() => onOpen({ kind: 'heating' })}><Waves size={15} />{runningFloorHeatings} 处制热已开启</button>}
       {runningFans > 0 && <button type="button" className="status-pill status-pill--cool status-pill--button" onClick={() => onOpen({ kind: 'fan' })}><Fan size={15} />{runningFans} 台风扇开启</button>}
+      {runningSwitches > 0 && <button type="button" className="status-pill status-pill--button" onClick={() => onOpen({ kind: 'switch' })}><Power size={15} />{runningSwitches} 个开关打开</button>}
       {timersCount > 0 && <button type="button" className="status-pill status-pill--heat status-pill--button" onClick={onOpenTimers}><Hourglass size={15} />{timersCount} 项正在计时</button>}
       {highlight && (() => {
         const v = highlightPillVisual(highlight.level, highlight.available);

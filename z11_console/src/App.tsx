@@ -556,7 +556,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
               </div>
             ) : (
               <>
-                {page === 'room' && <RoomStatusSummary home={home} roomId={selectedRoom.id} onOpen={setActiveList} />}
+                {page === 'room' && <RoomStatusSummary home={home} roomId={selectedRoom.id} onOpen={setActiveList} onOpenTimers={() => setTimersOpen(true)} />}
                 {page === 'home' && <HomeStatusSummary home={home} onOpen={setActiveList} onOpenBattery={() => setBatteryOpen(true)} onOpenTimers={() => setTimersOpen(true)} timersCount={timerItems.length} batteryEnabled={server.custom?.battery?.enabled !== false} />}
               </>
             )}
