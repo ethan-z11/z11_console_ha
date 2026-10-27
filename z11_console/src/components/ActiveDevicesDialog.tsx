@@ -22,7 +22,11 @@ const titles: Record<ActiveKind, { on: string; noun: string; icon: typeof Lightb
 };
 
 function matches(device: Device, request: ActiveListRequest): boolean {
-  return device.kind === request.kind && (!request.roomId || device.roomId === request.roomId);
+  if (request.roomId && device.roomId !== request.roomId) return false;
+  // 热水器（water_heater 域，或名称含“热水器”的空调实体）计入“制热”，不再算作空调。
+  if (request.kind === 'heating') return device.kind === 'heating' || (device.kind === 'climate' && Boolean(device.waterHeater));
+  if (request.kind === 'climate') return device.kind === 'climate' && !device.waterHeater;
+  return device.kind === request.kind;
 }
 
 function isOn(device: Device): boolean {
@@ -37,7 +41,7 @@ function detail(device: Device): string {
   }
   if (isClimate(device)) {
     if (!device.on) return '已关闭';
-    return [hvacModeLabel(device.mode), `设定 ${device.target}°`, device.current !== undefined ? `室温 ${device.current}°` : ''].filter(Boolean).join(' · ');
+    return [hvacModeLabel(device.mode), `设定 ${device.target}°`, device.current !== undefined ? `${device.waterHeater ? '水温' : '室温'} ${device.current}°` : ''].filter(Boolean).join(' · ');
   }
   if (device.kind === 'fan') {
     if (!device.on) return '已关闭';

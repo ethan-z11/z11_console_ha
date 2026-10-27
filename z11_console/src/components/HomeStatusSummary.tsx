@@ -18,8 +18,9 @@ export function HomeStatusSummary({ home, onOpen, onOpenBattery, onOpenTimers, t
   const alerts = home.devices.filter(isActiveAlert).length;
   const openDoors = home.devices.filter(isOpenDoor);
   const lit = home.devices.filter(isLit).length;
-  const runningAirConditioners = home.devices.filter((device) => device.kind === 'climate' && device.available && device.on).length;
-  const runningFloorHeatings = home.devices.filter((device) => device.kind === 'heating' && device.available && device.on).length;
+  const runningAirConditioners = home.devices.filter((device) => device.kind === 'climate' && !device.waterHeater && device.available && device.on).length;
+  // 热水器也计入“制热”（water_heater 域，或名称含“热水器”的空调实体）。
+  const runningFloorHeatings = home.devices.filter((device) => (device.kind === 'heating' || (device.kind === 'climate' && device.waterHeater)) && device.available && device.on).length;
   const runningFans = home.devices.filter((device) => device.kind === 'fan' && device.available && device.on).length;
   const runningSwitches = home.devices.filter((device) => device.kind === 'switch' && device.available && device.on).length;
   // 设置里“指向主页”的温湿度来源（scope = home），与房间状态摘要同样的药丸样式。
