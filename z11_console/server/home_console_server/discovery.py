@@ -210,9 +210,11 @@ def build_catalogue(areas: list[dict[str, Any]], devices: list[dict[str, Any]], 
         attributes = state.get("attributes") or {}
         entry = entries.get(entity_id) or {}
         device_class = attributes.get("device_class") or entry.get("device_class") or entry.get("original_device_class")
-        # 电量传感器常被 HA 标记为 diagnostic（entity_category），这里放行以便电量管理收录。
+        # 电量传感器常被 HA 标记为 diagnostic（entity_category），这里放行以便电量管理收录；
+        # 热水器同设备的控制 / 状态实体（如燃烧状态）也常被标为 diagnostic，需放行以便绑定。
         is_battery_sensor = domain == "sensor" and device_class == "battery"
-        if entry.get("disabled_by") or entry.get("hidden_by") or (entry.get("entity_category") and not is_battery_sensor):
+        heater_bind_candidate = domain in WATER_HEATER_BIND_DOMAINS and entry.get("device_id") in water_heater_device_ids
+        if entry.get("disabled_by") or entry.get("hidden_by") or (entry.get("entity_category") and not is_battery_sensor and not heater_bind_candidate):
             continue
         friendly = str(attributes.get("friendly_name") or entry.get("name") or entry.get("original_name") or entity_id)
         lunar = is_lunar_entity(domain, entity_id, friendly)
