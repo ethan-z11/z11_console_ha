@@ -84,9 +84,9 @@ export function ClimateDialog({ climate, room, actions, extras, onClose }: Clima
             <div className="bound-grid">
               {[...extras].sort((a, b) => (a.kind === 'switch' ? 0 : 1) - (b.kind === 'switch' ? 0 : 1)).map((extra) => extra.kind === 'switch'
                 ? (
-                  <button key={extra.id} type="button" role="switch" aria-checked={extra.on} className={`bound-item bound-item--control${extra.on ? ' bound-item--on' : ''}`} onClick={() => actions.toggle(extra.id)} disabled={!extra.available}>
+                  <button key={extra.id} type="button" role="switch" aria-checked={extra.on} className={`bound-item bound-item--control${extra.on ? ' bound-item--on' : ''}${extra.available ? '' : ' bound-item--muted'}`} onClick={() => actions.toggle(extra.id)} disabled={!extra.available}>
                     <span className="bound-item__name">{extra.name}</span>
-                    <span className="bound-item__value">{extra.available ? extra.on ? '已开启' : '已关闭' : '不可用'}</span>
+                    <span className="bound-item__switch" aria-hidden="true"><i /></span>
                   </button>
                 )
                 : (
