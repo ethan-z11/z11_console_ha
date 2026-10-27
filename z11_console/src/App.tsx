@@ -262,7 +262,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
     toggle: (id) => {
       const device = home.devices.find((item) => item.id === id);
       if (device && isClimate(device) && device.available && !device.on) {
-        if (device.kind === 'heating' && season === 'summer') {
+        if (device.kind === 'heating' && !device.waterHeater && season === 'summer') {
           setAppNotice(`${device.name}：夏季不能打开制热，可在 设置 → 自动化 切换季节`);
           return;
         }
@@ -277,7 +277,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
     },
     changeClimateMode: (id, mode) => {
       const device = home.devices.find((item) => item.id === id);
-      if (device?.kind === 'heating' && season === 'summer' && mode !== 'off') {
+      if (device?.kind === 'heating' && !device.waterHeater && season === 'summer' && mode !== 'off') {
         setAppNotice(`${device.name}：夏季不能打开制热，可在 设置 → 自动化 切换季节`);
         return;
       }
@@ -456,7 +456,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
   }, [home.devices, server.custom]);
 
   function card(device: Device, room: Room, tile: TilePlacement) {
-    return <DeviceCard key={device.id} device={device} room={room} tile={tile} actions={actions} onOpenClimate={setSelectedClimateId} seasonLock={season === 'summer' && device.kind === 'heating' ? '夏季停用' : undefined} childDevices={childDevicesByHost.get(device.id)} />;
+    return <DeviceCard key={device.id} device={device} room={room} tile={tile} actions={actions} onOpenClimate={setSelectedClimateId} seasonLock={season === 'summer' && device.kind === 'heating' && !device.waterHeater ? '夏季停用' : undefined} childDevices={childDevicesByHost.get(device.id)} />;
   }
 
   /** 常用区卡片可在“编辑”里切换 1×1／2×1，尺寸单独保存，不影响房间里的同一设备。 */
@@ -648,7 +648,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
       {timersOpen && <TimersDialog timers={timerItems} onClose={() => setTimersOpen(false)} onClear={deviceActions.clearTimer} />}
       <WeatherDialog open={weatherOpen} weather={weather} now={now} onClose={() => setWeatherOpen(false)} />
       <AlmanacDialog open={almanacOpen} almanac={almanac} onClose={() => setAlmanacOpen(false)} />
-      <ClimateDialog climate={selectedClimate} room={selectedClimate && roomOf(selectedClimate)} actions={actions} onClose={() => setSelectedClimateId(null)} />
+      <ClimateDialog climate={selectedClimate} room={selectedClimate && roomOf(selectedClimate)} actions={actions} extras={selectedClimate ? childDevicesByHost.get(selectedClimate.id) : undefined} onClose={() => setSelectedClimateId(null)} />
     </div>
   );
 }

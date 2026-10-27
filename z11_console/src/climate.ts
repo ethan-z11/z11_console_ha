@@ -6,6 +6,13 @@ const hvacLabels: Record<string, string> = {
   auto: '自动',
   heat_cool: '自动冷热',
   off: '关闭',
+  // water_heater 的 operation_list（热水器运行模式）。
+  eco: '节能',
+  electric: '电加热',
+  gas: '燃气',
+  heat_pump: '热泵',
+  high_demand: '高需求',
+  performance: '高效',
 };
 
 const fanLabels: Record<string, string> = {

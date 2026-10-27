@@ -19,6 +19,7 @@ const defaultTileSize: Record<Device['kind'], TileSize> = {
   cover: '1x1',
   vacuum: '2x1',
   switch: '1x1',
+  bound: '1x1',
 };
 
 /** 播放器控件较多，固定为 2×1；其他设备可在 1×1 与 2×1 间切换。 */

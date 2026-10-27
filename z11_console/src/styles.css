@@ -826,6 +826,17 @@ strong { font-weight: 600; }
 .climate-detail__options button[aria-pressed="true"] { background: var(--surface-3); color: var(--text); box-shadow: var(--highlight), 0 0 0 1px color-mix(in srgb, var(--tone) 55%, transparent); }
 .climate-detail__options button:disabled { opacity: .4; }
 .device-dialog .climate-detail__hint { margin: 9px 0 0; color: var(--text-3); font-size: 12px; }
+/* 热水器弹窗里绑定的控制按钮与传感器：两列自适应，名字过长省略，状态靠右对齐。 */
+.bound-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.bound-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 46px; padding: 10px 14px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface); color: var(--text); text-align: left; font-size: 13px; }
+.bound-item__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bound-item__value { flex: none; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.bound-item--control { cursor: pointer; transition: border-color .18s, background-color .18s; }
+.bound-item--control:hover:not(:disabled) { border-color: var(--hairline-strong); background: var(--surface-2); }
+.bound-item--control:disabled { opacity: .45; cursor: default; }
+.bound-item--on { border-color: color-mix(in srgb, var(--tone) 55%, transparent); background: color-mix(in srgb, var(--tone) 12%, var(--surface)); }
+.bound-item--on .bound-item__value { color: var(--tone); }
+.bound-item--muted { opacity: .55; }
 @media (max-width: 390px) {
   .climate-detail__temperature { align-items: flex-start; flex-direction: column; }
 }

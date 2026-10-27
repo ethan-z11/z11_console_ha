@@ -1,6 +1,6 @@
 import type { DeviceCommand } from './deviceCommands';
 import type { Catalogue, CatalogueEntity, CustomConfig, EntityState, MetricName } from './consoleClient';
-import type { BatteryReading, ClimateDevice, CoverDevice, Device, FanDevice, HomeState, LightDevice, MediaDevice, Person, Room, SafetyDevice, SensorDevice, SwitchDevice, VacuumDevice } from './types';
+import type { BatteryReading, BoundDevice, ClimateDevice, CoverDevice, Device, FanDevice, HomeState, LightDevice, MediaDevice, Person, Room, SafetyDevice, SensorDevice, SwitchDevice, VacuumDevice } from './types';
 
 type States = Map<string, EntityState>;
 
@@ -62,7 +62,8 @@ function toClimate(base: ClimateDevice, previous: ClimateDevice | undefined, sta
     mode: on ? state.state : previous?.mode ?? base.mode,
     target: num(a.temperature) ?? previous?.target ?? base.target,
     current: num(a.current_temperature),
-    hvacModes: strings(a.hvac_modes) ?? base.hvacModes,
+    // 热水器用 operation_list（燃气 / 电加热 / 热泵 / 节能 等），空调用 hvac_modes。
+    hvacModes: strings(a.hvac_modes) ?? strings(a.operation_list) ?? base.hvacModes,
     fanMode: str(a.fan_mode),
     fanModes: strings(a.fan_modes),
     swingMode: str(a.swing_mode),
@@ -203,7 +204,27 @@ function toDevice(base: Device, previous: Device | undefined, state: EntityState
     case 'switch': return toSwitch(base, state);
     case 'sensor': return toSensor(base, state);
     case 'safety': return toSafety(base, state);
+    case 'bound': return toBound(base, state);
   }
+}
+
+/** 热水器绑定的只读状态实体：binary_sensor 显示运行状态，sensor 显示数值与单位。 */
+function toBound(base: BoundDevice, state: EntityState): BoundDevice {
+  if (!usable(state)) return { ...base, available: false, text: '不可用' };
+  const raw = state.state;
+  const unit = str(state.attributes.unit_of_measurement) ?? '';
+  const text = base.domain === 'binary_sensor'
+    ? raw === 'on' ? '运行中' : raw === 'off' ? '未运行' : raw
+    : base.domain === 'sensor' ? `${raw}${unit}` : raw;
+  return { ...base, available: true, text };
+}
+
+/** 可绑定到热水器的“控制按钮与传感器”实体域。 */
+export const WATER_HEATER_BIND_DOMAINS = new Set(['switch', 'input_boolean', 'binary_sensor', 'sensor']);
+
+/** 热水器识别：water_heater 域，或名称含“热水器”的 climate 实体（部分集成把热水器挂在空调域下）。 */
+export function isWaterHeaterEntity(entity: Pick<CatalogueEntity, 'domain' | 'name'>): boolean {
+  return entity.domain === 'water_heater' || (entity.domain === 'climate' && entity.name.includes('热水器'));
 }
 
 const safetyTypes: Record<string, SafetyDevice['sensorType']> = {
@@ -227,7 +248,8 @@ function baseDevice(entity: CatalogueEntity, roomId: string, state: EntityState 
       return { ...common, kind: 'light', on: false, supportedColorModes: ['onoff'] };
     case 'climate': {
       const heating = isHeatingOnly(state);
-      return { ...common, kind: heating ? 'heating' : 'climate', on: false, target: 0, mode: heating ? 'heat' : 'cool', hvacModes: [], min: 5, max: 35, step: heating ? 0.5 : 1 };
+      // 名称含“热水器”的空调实体按热水器处理（不受夏季停用），卡片样式仍与空调一致。
+      return { ...common, kind: heating ? 'heating' : 'climate', on: false, target: 0, mode: heating ? 'heat' : 'cool', hvacModes: [], min: 5, max: 35, step: heating ? 0.5 : 1, waterHeater: entity.name.includes('热水器') };
     }
     case 'media_player':
       return { ...common, kind: 'media', mediaType: entity.deviceClass === 'speaker' ? 'speaker' : 'tv', status: 'unknown' };
@@ -242,6 +264,9 @@ function baseDevice(entity: CatalogueEntity, roomId: string, state: EntityState 
     case 'input_boolean':
       // HA 助手布尔开关（input_boolean）与普通开关同样只有 on/off，统一成开关卡片。
       return { ...common, kind: 'switch', on: false };
+    case 'water_heater':
+      // 热水器卡片外观与空调一致；运行模式取 operation_list，按制热设备计数。
+      return { ...common, kind: 'heating', on: false, target: 0, mode: 'heat', hvacModes: [], min: 30, max: 75, step: 1, waterHeater: true };
     case 'sensor':
       if (entity.deviceClass !== 'temperature' && entity.deviceClass !== 'humidity') return null;
       return { ...common, kind: 'sensor', metric: entity.deviceClass, value: '', unit: entity.deviceClass === 'temperature' ? '°C' : '%', precision: entity.precision };
@@ -291,6 +316,7 @@ export function entityKindLabel(entity: Pick<CatalogueEntity, 'domain' | 'device
       return '窗帘';
     }
     case 'vacuum': return '扫地机';
+    case 'water_heater': return '热水器';
     case 'switch':
     case 'input_boolean': return '开关';
     case 'scene': return '场景';
@@ -374,6 +400,7 @@ export function liveHome(catalogue: Catalogue | null, states: States, previous: 
   for (const [hostId, childIds] of Object.entries(childrenOf)) {
     for (const childId of childIds) childToHost.set(childId, hostId);
   }
+  const entityById = new Map(entities.map((entity) => [entity.id, entity]));
 
   for (const entity of entities) {
     const state = states.get(entity.id);
@@ -403,13 +430,20 @@ export function liveHome(catalogue: Catalogue | null, states: States, previous: 
       });
       continue;
     }
-    // 子设备：不进入房间列表，只在宿主设置弹窗里显示；roomId 记宿主房间，类型必须与宿主一致（灯 / 窗帘）。
+    // 绑定项：不进入房间列表，只在宿主设置弹窗里显示。灯 / 窗帘子设备类型必须一致；
+    // 热水器宿主则绑定开关 / 布尔助手（可点按）以及传感器（只读状态，如燃烧状态）。
     const boundHost = childToHost.get(entity.id);
     if (boundHost !== undefined) {
-      if (entity.domain !== 'light' && entity.domain !== 'cover') continue;
+      const host = entityById.get(boundHost);
+      const waterHeaterHost = Boolean(host && isWaterHeaterEntity(host));
+      if (waterHeaterHost) {
+        if (!WATER_HEATER_BIND_DOMAINS.has(entity.domain)) continue;
+      } else if (entity.domain !== 'light' && entity.domain !== 'cover') continue;
       const hostRoom = custom.assignments[boundHost];
       const childRoom = hostRoom && roomIds.has(hostRoom) ? hostRoom : '';
-      const base = baseDevice(entity, childRoom, state);
+      const base: Device | null = waterHeaterHost && (entity.domain === 'binary_sensor' || entity.domain === 'sensor')
+        ? { id: entity.id, roomId: childRoom, name: entity.name, available: false, kind: 'bound', domain: entity.domain, text: '' }
+        : baseDevice(entity, childRoom, state);
       if (!base) continue;
       const override = custom.entities?.[entity.id];
       if (override) {
@@ -460,6 +494,8 @@ export function serviceCall(after: Device, command: DeviceCommand): ServiceCall 
     case 'toggle':
       if (after.kind === 'light') return { domain: 'light', service: after.on ? 'turn_on' : 'turn_off', data: {} };
       if (after.kind === 'climate' || after.kind === 'heating') {
+        // 热水器用 water_heater 域服务（turn_on 会沿用上次的运行模式）。
+        if (after.id.startsWith('water_heater.')) return { domain: 'water_heater', service: after.on ? 'turn_on' : 'turn_off', data: {} };
         const mode = after.mode !== 'off' ? after.mode : after.hvacModes.find((option) => option !== 'off');
         return mode ? { domain: 'climate', service: 'set_hvac_mode', data: { hvac_mode: after.on ? mode : 'off' } } : null;
       }
@@ -477,13 +513,20 @@ export function serviceCall(after: Device, command: DeviceCommand): ServiceCall 
       return null;
     case 'turnOff':
       if (after.kind === 'light') return { domain: 'light', service: 'turn_off', data: {} };
-      if (after.kind === 'climate' || after.kind === 'heating') return { domain: 'climate', service: 'set_hvac_mode', data: { hvac_mode: 'off' } };
+      if (after.kind === 'climate' || after.kind === 'heating') {
+        return after.id.startsWith('water_heater.')
+          ? { domain: 'water_heater', service: 'turn_off', data: {} }
+          : { domain: 'climate', service: 'set_hvac_mode', data: { hvac_mode: 'off' } };
+      }
       if (after.kind === 'fan') return { domain: 'fan', service: 'turn_off', data: {} };
       if (after.kind === 'cover') return { domain: 'cover', service: 'close_cover', data: {} };
       if (after.kind === 'switch') return { domain: after.id.startsWith('input_boolean.') ? 'input_boolean' : 'switch', service: 'turn_off', data: {} };
       return null;
     case 'adjust':
-      return after.kind === 'climate' || after.kind === 'heating' ? { domain: 'climate', service: 'set_temperature', data: { temperature: after.target } } : null;
+      if (after.kind !== 'climate' && after.kind !== 'heating') return null;
+      return after.id.startsWith('water_heater.')
+        ? { domain: 'water_heater', service: 'set_temperature', data: { temperature: after.target } }
+        : { domain: 'climate', service: 'set_temperature', data: { temperature: after.target } };
     case 'light': {
       const data: Record<string, unknown> = {};
       if (command.patch.brightness !== undefined) data.brightness_pct = command.patch.brightness;
@@ -492,7 +535,9 @@ export function serviceCall(after: Device, command: DeviceCommand): ServiceCall 
       return { domain: 'light', service: 'turn_on', data };
     }
     case 'hvacMode':
-      return { domain: 'climate', service: 'set_hvac_mode', data: { hvac_mode: command.mode } };
+      return after.id.startsWith('water_heater.')
+        ? { domain: 'water_heater', service: 'set_operation_mode', data: { operation_mode: command.mode } }
+        : { domain: 'climate', service: 'set_hvac_mode', data: { hvac_mode: command.mode } };
     case 'fanMode':
       return { domain: 'climate', service: 'set_fan_mode', data: { fan_mode: command.fanMode } };
     case 'swingMode':

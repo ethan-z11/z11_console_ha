@@ -165,6 +165,7 @@ export type ClimateTone = 'off' | 'cool' | 'heat' | 'dry' | 'fan' | 'auto' | 'un
 export function climateTone(device: ClimateDevice): ClimateTone {
   if (!device.available) return 'unavailable';
   if (!device.on) return 'off';
+  if (device.waterHeater) return 'heat';
   if (device.kind === 'heating' || device.mode === 'heat') return 'heat';
   if (device.mode === 'cool') return 'cool';
   if (device.mode === 'dry') return 'dry';

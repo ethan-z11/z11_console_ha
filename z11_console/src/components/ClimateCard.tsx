@@ -25,12 +25,14 @@ export function ClimateCard({ layout, climate, room, onToggle, onAdjust, onOpenD
   const tone = climateTone(climate);
   const Icon = climateIcons[tone] ?? (climate.kind === 'heating' ? Waves : AirVent);
   const label = `${room.name}${climate.name}`;
+  // 热水器显示的是水温，不是室温。
+  const currentLabel = climate.waterHeater ? '水温' : '室温';
   const mode = `${climate.on ? hvacModeLabel(climate.mode) : '已关闭 · ' + hvacModeLabel(climate.mode)}${climate.fanMode ? ` · ${fanModeLabel(climate.fanMode)}` : ''}`;
   const locked = Boolean(seasonLock) && climate.available && !climate.on;
-  const status = !climate.available ? '设备不可用' : locked ? `${climate.current !== undefined ? `室温 ${climate.current}° · ` : ''}${seasonLock}` : `${climate.current !== undefined ? `室温 ${climate.current}° · ` : ''}${mode}`;
+  const status = !climate.available ? '设备不可用' : locked ? `${climate.current !== undefined ? `${currentLabel} ${climate.current}° · ` : ''}${seasonLock}` : `${climate.current !== undefined ? `${currentLabel} ${climate.current}° · ` : ''}${mode}`;
   const shortStatus = !climate.available ? '不可用' : climate.on ? hvacModeLabel(climate.mode) : locked ? seasonLock! : '已关闭';
   // 2×1 时名称和简短状态放在图标右侧（与灯一致），温度下方只补充室温和风速。
-  const detail = !climate.available ? '设备不可用' : [climate.current !== undefined ? `室温 ${climate.current}°` : '', climate.fanMode ? fanModeLabel(climate.fanMode) : ''].filter(Boolean).join(' · ');
+  const detail = !climate.available ? '设备不可用' : [climate.current !== undefined ? `${currentLabel} ${climate.current}°` : '', climate.fanMode ? fanModeLabel(climate.fanMode) : ''].filter(Boolean).join(' · ');
   const adjustDisabled = !climate.available || !climate.on || editing;
 
   return (

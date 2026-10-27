@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { climateTone } from '../appearance';
 import { autoFirst, fanModeLabel, hvacModeLabel } from '../climate';
 import { openModalQuietly, releasePointerFocus } from '../focus';
-import type { ClimateDevice, DeviceActions, Room } from '../types';
+import type { ClimateDevice, Device, DeviceActions, Room } from '../types';
 import { DelayTimerBlock } from './DelayTimer';
 
 interface ClimateDialogProps {
@@ -11,10 +11,12 @@ interface ClimateDialogProps {
   climate: ClimateDevice | undefined;
   room: Room | undefined;
   actions: DeviceActions;
+  /** 热水器绑定的控制按钮与传感器（开关在前，只读状态在后）。 */
+  extras?: Device[];
   onClose: () => void;
 }
 
-export function ClimateDialog({ climate, room, actions, onClose }: ClimateDialogProps) {
+export function ClimateDialog({ climate, room, actions, extras, onClose }: ClimateDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const open = Boolean(climate);
 
@@ -36,7 +38,7 @@ export function ClimateDialog({ climate, room, actions, onClose }: ClimateDialog
           <div>
             <small>设定温度</small>
             <strong>{climate.available ? climate.target : '--'}°</strong>
-            {climate.current !== undefined && <span>室温 {climate.current}°</span>}
+            {climate.current !== undefined && <span>{climate.waterHeater ? '水温' : '室温'} {climate.current}°</span>}
             <span>{!climate.available ? '设备不可用' : climate.on ? hvacModeLabel(climate.mode) : '已关闭'}</span>
           </div>
           <div className="climate-card__actions">
@@ -45,14 +47,16 @@ export function ClimateDialog({ climate, room, actions, onClose }: ClimateDialog
             <button type="button" onClick={() => actions.toggle(climate.id)} disabled={!climate.available} aria-label={climate.on ? '关闭设备' : '打开设备'} aria-pressed={climate.on}><Power size={20} /></button>
           </div>
         </div>
-        <div className="climate-detail__group">
-          <h3>模式</h3>
-          <div className="climate-detail__options">
-            {autoFirst(climate.hvacModes.filter((mode) => mode !== 'off')).map((mode) => (
-              <button key={mode} type="button" onClick={() => actions.changeClimateMode(climate.id, mode)} disabled={!climate.available} aria-pressed={climate.on && climate.mode === mode}>{hvacModeLabel(mode)}</button>
-            ))}
+        {climate.hvacModes.some((mode) => mode !== 'off') && (
+          <div className="climate-detail__group">
+            <h3>模式</h3>
+            <div className="climate-detail__options">
+              {autoFirst(climate.hvacModes.filter((mode) => mode !== 'off')).map((mode) => (
+                <button key={mode} type="button" onClick={() => actions.changeClimateMode(climate.id, mode)} disabled={!climate.available} aria-pressed={climate.on && climate.mode === mode}>{hvacModeLabel(mode)}</button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
         {climate.fanModes && climate.fanModes.length > 0 && (
           <div className="climate-detail__group">
             <h3>风速</h3>
@@ -71,6 +75,26 @@ export function ClimateDialog({ climate, room, actions, onClose }: ClimateDialog
               {climate.swingModes.map((swingMode) => (
                 <button key={swingMode} type="button" onClick={() => actions.setSwingMode(climate.id, swingMode)} disabled={!climate.available || !climate.on} aria-pressed={climate.swingMode === swingMode}>{swingMode === 'on' ? '开启' : swingMode === 'off' ? '关闭' : swingMode}</button>
               ))}
+            </div>
+          </div>
+        )}
+        {extras && extras.length > 0 && (
+          <div className="climate-detail__group">
+            <h3>控制与传感器</h3>
+            <div className="bound-grid">
+              {[...extras].sort((a, b) => (a.kind === 'switch' ? 0 : 1) - (b.kind === 'switch' ? 0 : 1)).map((extra) => extra.kind === 'switch'
+                ? (
+                  <button key={extra.id} type="button" role="switch" aria-checked={extra.on} className={`bound-item bound-item--control${extra.on ? ' bound-item--on' : ''}`} onClick={() => actions.toggle(extra.id)} disabled={!extra.available}>
+                    <span className="bound-item__name">{extra.name}</span>
+                    <span className="bound-item__value">{extra.available ? extra.on ? '已开启' : '已关闭' : '不可用'}</span>
+                  </button>
+                )
+                : (
+                  <div key={extra.id} className={`bound-item${extra.available ? '' : ' bound-item--muted'}`}>
+                    <span className="bound-item__name">{extra.name}</span>
+                    <span className="bound-item__value">{extra.kind === 'bound' ? extra.text : ''}</span>
+                  </div>
+                ))}
             </div>
           </div>
         )}

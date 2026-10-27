@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Battery, Blinds, Cctv, DoorOpen, Droplets, House, Lightbulb, Link2, Pencil, PersonStanding, Pin, Plus, Search, Sparkles, Thermometer, Trash2, X, ZoomIn } from 'lucide-react';
+import { ArrowDown, ArrowUp, Battery, Blinds, Cctv, DoorOpen, Droplets, Flame, House, Lightbulb, Link2, Pencil, PersonStanding, Pin, Plus, Search, Sparkles, Thermometer, Trash2, X, ZoomIn } from 'lucide-react';
 import { CollapsibleCard } from './CollapsibleCard';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
@@ -6,7 +6,7 @@ import { ApiError, getCustom, getEntities, putCustom } from '../consoleApi';
 import type { DiscoveredEntities } from '../consoleApi';
 import type { CameraType, CatalogueEntity, CustomConfig, LabelInfo, MetricName } from '../consoleClient';
 import { cameraType } from '../consoleClient';
-import { entityKindLabel, isSceneTarget, sceneDisplayName } from '../haAdapter';
+import { entityKindLabel, isSceneTarget, isWaterHeaterEntity, sceneDisplayName, WATER_HEATER_BIND_DOMAINS } from '../haAdapter';
 import { findAnyIcon, findSceneIcon, DEVICE_ICONS, PHU_ICONS, ROOM_ICONS, SCENE_ICONS } from '../icons';
 import type { IconChoice } from '../icons';
 import { roomIcon } from '../appearance';
@@ -51,9 +51,10 @@ const newId = (prefix: string) => `${prefix}${Date.now().toString(36)}${Math.ran
 
 /** 可加入房间的设备类实体；人员与农历是全局信息，一键执行类实体只属于情景按钮。 */
 function isRoomDevice(entity: CatalogueEntity): boolean {
-  // 规则：unavailable 的实体不能进入可选范围（已在房间里的设备仍以离线卡片显示，不在这里移除）。
-  if (entity.available === false) return false;
-  if (entity.domain === 'light' || entity.domain === 'climate' || entity.domain === 'media_player' || entity.domain === 'fan' || entity.domain === 'cover' || entity.domain === 'vacuum' || entity.domain === 'switch' || entity.domain === 'input_boolean') return true;
+  // 规则：unavailable 的实体不能进入可选范围（已在房间里的设备仍以离线卡片显示，不在这里移除）；
+  // bindOnly 实体（如热水器的燃烧状态）只能在绑定时选中，不单独成卡。
+  if (entity.available === false || entity.bindOnly) return false;
+  if (entity.domain === 'light' || entity.domain === 'climate' || entity.domain === 'media_player' || entity.domain === 'fan' || entity.domain === 'cover' || entity.domain === 'vacuum' || entity.domain === 'switch' || entity.domain === 'input_boolean' || entity.domain === 'water_heater') return true;
   if (entity.domain === 'binary_sensor') return Boolean(entity.deviceClass);
   if (entity.domain === 'sensor') return entity.deviceClass === 'temperature' || entity.deviceClass === 'humidity' || entity.deviceClass === 'battery';
   return false;
@@ -281,13 +282,17 @@ function ChildBindPicker({ entities, custom, initialHostId, onSave, onClose }: {
   const close = () => dialogRef.current?.close();
   const handleKey = (event: KeyboardEvent<HTMLDialogElement>) => { if (event.key === 'Escape') event.preventDefault(); };
 
-  // 宿主候选：已加入某个房间（宿主没有卡片就无法打开它的设置弹窗，绑定没有意义）、在线的灯 / 窗帘，且不是任何绑定的子设备；编辑时已绑定的宿主始终可回显。
-  const hostPool = entities.filter((entity) => (entity.domain === 'light' || entity.domain === 'cover') && entity.available !== false && !childOwner.has(entity.id) && Boolean(custom.assignments[entity.id]));
+  // 宿主候选：已加入某个房间（宿主没有卡片就无法打开它的设置弹窗，绑定没有意义）、在线的灯 / 窗帘 / 热水器，
+  // 且不是任何绑定的子设备；编辑时已绑定的宿主始终可回显。
+  // 热水器包含 water_heater 域和名称含“热水器”的 climate 实体（部分集成把热水器挂在空调域下）。
+  const hostPool = entities.filter((entity) => (entity.domain === 'light' || entity.domain === 'cover' || isWaterHeaterEntity(entity)) && entity.available !== false && !childOwner.has(entity.id) && Boolean(custom.assignments[entity.id]));
   const host = entities.find((entity) => entity.id === hostId);
+  const hostIsWaterHeater = Boolean(host && isWaterHeaterEntity(host));
   const hostOptions = !hostId || hostPool.some((entity) => entity.id === hostId) ? hostPool : host ? [host, ...hostPool] : hostPool;
-  // 子设备候选：与宿主同域、不是宿主自己、不是任何绑定的宿主或子设备。
+  // 绑定候选：热水器绑开关 / 布尔助手 / 传感器（控制按钮与状态）；灯和窗帘只能绑同域。
   const candidates = host
-    ? entities.filter((entity) => entity.domain === host.domain && entity.id !== host.id && !childOwner.has(entity.id) && !(entity.id in childrenOf) && entity.available !== false)
+    ? entities.filter((entity) => entity.id !== host.id && !childOwner.has(entity.id) && !(entity.id in childrenOf) && entity.available !== false
+      && (hostIsWaterHeater ? WATER_HEATER_BIND_DOMAINS.has(entity.domain) : entity.domain === host.domain))
     : [];
   const keyword = query.trim().toLowerCase();
   const matches = candidates
@@ -328,7 +333,11 @@ function ChildBindPicker({ entities, custom, initialHostId, onSave, onClose }: {
       const id = raw.trim().toLowerCase();
       if (!/^[a-z0-9_]{1,32}\.[a-z0-9_]{1,64}$/.test(id)) { problems.push(`${id}：实体 ID 格式不对`); continue; }
       if (id === host.id) { problems.push('宿主本身不能作为子设备'); continue; }
-      if (id.split('.')[0] !== host.domain) { problems.push(`${id}：与宿主类型不一致（${host.domain === 'light' ? '灯只能绑灯' : '窗帘只能绑窗帘'}）`); continue; }
+      if (hostIsWaterHeater) {
+        if (!WATER_HEATER_BIND_DOMAINS.has(id.split('.')[0])) { problems.push(`${id}：热水器只能绑定开关 / 布尔开关 / 传感器`); continue; }
+      } else if (id.split('.')[0] !== host.domain) {
+        problems.push(`${id}：与宿主类型不一致（${host.domain === 'light' ? '灯只能绑灯' : '窗帘只能绑窗帘'}）`); continue;
+      }
       if (childOwner.has(id) || (id in childrenOf)) { problems.push(`${id}：已被其他绑定占用`); continue; }
       if (!nameOf.has(id)) { problems.push(`${id}：不在已发现实体中`); continue; }
       added.push(id);
@@ -342,13 +351,13 @@ function ChildBindPicker({ entities, custom, initialHostId, onSave, onClose }: {
   return (
     <dialog ref={dialogRef} className="device-dialog customize-dialog" aria-labelledby={`${pickerId}-title`} onKeyDown={handleKey} onClose={onClose} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="device-dialog__heading">
-        <div><small>子设备绑定</small><h2 id={`${pickerId}-title`}>{initialHostId ? '编辑子设备' : '新增绑定'}</h2></div>
+        <div><small>设备绑定</small><h2 id={`${pickerId}-title`}>{initialHostId ? '编辑绑定' : '新增绑定'}</h2></div>
         <button type="button" className="icon-button" onClick={close} aria-label="完成"><X size={20} /></button>
       </div>
       <div className="customize-dialog__body">
-        <p className="settings-message">先选宿主设备（灯 / 窗帘），再勾选或手动输入它的子设备。保存后子设备不再单独显示卡片，只在宿主设置弹窗里以大卡片展示与控制。</p>
+        <p className="settings-message">先选宿主设备，再勾选或手动输入要绑定的实体。灯 / 窗帘绑定同类型子设备；热水器绑定开关与传感器（如零冷水开关、燃烧状态），绑定后只在宿主设置弹窗里显示与控制。</p>
         <label className="settings-field">
-          <span>宿主设备{hostPool.length === 0 ? '（没有已加入房间的灯 / 窗帘）' : ''}</span>
+          <span>宿主设备{hostPool.length === 0 ? '（没有已加入房间的灯 / 窗帘 / 热水器）' : ''}</span>
           <select value={hostId} onChange={(event) => changeHost(event.target.value)}>
             <option value="">选择宿主设备</option>
             {hostOptions.map((entity) => <option key={entity.id} value={entity.id}>{entity.name}（{entity.id}）</option>)}
@@ -377,9 +386,9 @@ function ChildBindPicker({ entities, custom, initialHostId, onSave, onClose }: {
                 <input id={`${pickerId}-q`} type="search" placeholder="搜索名称或实体 ID" value={query} onChange={(event) => setQuery(event.target.value)} />
               </label>
             </div>
-            {matches.length === 0 ? <p className="settings-message">没有可绑定的同类型实体。</p> : (
+            {matches.length === 0 ? <p className="settings-message">{hostIsWaterHeater ? '没有可绑定的开关 / 传感器实体。' : '没有可绑定的同类型实体。'}</p> : (
               <section className="entity-filter__group">
-                <h4>{host.domain === 'cover' ? '候选子窗帘' : '候选子灯'}<em>{matches.length}</em></h4>
+                <h4>{hostIsWaterHeater ? '候选控制按钮与传感器' : host.domain === 'cover' ? '候选子窗帘' : '候选子灯'}<em>{matches.length}</em></h4>
                 <ul>
                   {matches.map((entity) => (
                     <li key={entity.id}>
@@ -397,7 +406,7 @@ function ChildBindPicker({ entities, custom, initialHostId, onSave, onClose }: {
         )}
       </div>
       <div className="customize-dialog__footer">
-        <span className="settings-message">{hostId ? `勾选即保存 · 已绑定 ${picked.size} 个子设备` : '请先选择宿主设备'}</span>
+        <span className="settings-message">{hostId ? `勾选即保存 · 已绑定 ${picked.size} 项` : '请先选择宿主设备'}</span>
       </div>
     </dialog>
   );
@@ -974,17 +983,20 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
         {message && <p className="settings-message settings-message--good" role="status">{message}</p>}
       </CollapsibleCard>
 
-      <CollapsibleCard icon={Link2} title="子设备绑定（灯 / 窗帘）">
-        <p className="settings-message">把某盏灯 / 某个窗帘绑定为另一个的子设备：子设备不再单独显示卡片，只在宿主卡片的设置弹窗里以大卡片展示与控制。灯只能绑定灯，窗帘只能绑定窗帘；绑定后子设备会自动移出原房间。</p>
+      <CollapsibleCard icon={Link2} title="设备绑定（灯 / 窗帘 / 热水器）">
+        <p className="settings-message">把某盏灯 / 某个窗帘绑定为另一个的子设备：子设备不再单独显示卡片，只在宿主卡片的设置弹窗里以大卡片展示与控制。灯只能绑定灯，窗帘只能绑定窗帘。热水器（water_heater 域，或名称含“热水器”的空调实体）可绑定开关与传感器（如零冷水开关、燃烧状态），在热水器弹窗里集中显示与控制；绑定项会自动移出原房间。</p>
         {childrenBindings.length === 0 ? (
           <p className="settings-message">还没有绑定，点击下方按钮新增。</p>
         ) : (
           <ul className="child-bind-list">
             {childrenBindings.map(([hostId, ids]) => {
               const host = entityById.get(hostId);
+              const waterHeater = Boolean(host && isWaterHeaterEntity(host));
+              const hostKind = waterHeater ? '热水器' : host?.domain === 'cover' ? '窗帘' : '灯';
+              const HostIcon = waterHeater ? Flame : host?.domain === 'cover' ? Blinds : Lightbulb;
               return (
                 <li key={hostId} className="child-bind-row">
-                  <span className="child-bind-row__host">{host?.domain === 'cover' ? <Blinds size={15} /> : <Lightbulb size={15} />}<strong>{host?.name ?? hostId}</strong><em>{host?.domain === 'cover' ? '窗帘' : '灯'}</em></span>
+                  <span className="child-bind-row__host"><HostIcon size={15} /><strong>{host?.name ?? hostId}</strong><em>{hostKind}</em></span>
                   <span className="child-bind-row__children">{ids.map((id) => <code key={id} title={id}>{entityNameById.get(id) ?? id}</code>)}</span>
                   <span className="child-bind-row__actions">
                     <button type="button" className="icon-button" onClick={() => setChildPicker({ hostId })} aria-label={`编辑 ${host?.name ?? hostId} 的子设备`} title="编辑子设备"><Pencil size={16} /></button>
@@ -1664,15 +1676,17 @@ function DevicePicker({ room, data, custom, searchId, onToggle, onEdit, onBindCh
                 const inThisRoom = currentRoom === room.id;
                 const elsewhere = currentRoom && currentRoom !== room.id ? custom.rooms.find((item) => item.id === currentRoom)?.name : undefined;
                 const displayName = custom.entities?.[entity.id]?.name || entity.name;
+                const waterHeater = isWaterHeaterEntity(entity);
+                const canBind = entity.domain === 'light' || entity.domain === 'cover' || waterHeater;
                 return (
                   <li key={`${entity.id}-${index}`}>
                     <label>
                       <input type="checkbox" checked={inThisRoom} onChange={(event) => onToggle(entity.id, event.target.checked)} />
                       <span className="entity-filter__name">{displayName}</span>
                       <button type="button" className="icon-button entity-filter__edit" title="自定义名称与图标" aria-label={`自定义“${displayName}”的名称与图标`} onClick={(event) => { event.preventDefault(); onEdit(entity); }}><Pencil size={14} /></button>
-                      {(entity.domain === 'light' || entity.domain === 'cover') && Boolean(custom.assignments[entity.id]) && !bound.owners.has(entity.id) && <button type="button" className="icon-button entity-filter__edit" title={bound.counts.get(entity.id) ? `编辑子设备绑定（现有 ${bound.counts.get(entity.id)} 个）` : '绑定子设备'} aria-label={`为“${displayName}”绑定子设备`} onClick={(event) => { event.preventDefault(); onBindChildren(entity); }}><Link2 size={14} /></button>}
+                      {canBind && Boolean(custom.assignments[entity.id]) && !bound.owners.has(entity.id) && <button type="button" className="icon-button entity-filter__edit" title={bound.counts.get(entity.id) ? `编辑${waterHeater ? '控制与传感器' : '子设备'}绑定（现有 ${bound.counts.get(entity.id)} 个）` : waterHeater ? '绑定控制与传感器' : '绑定子设备'} aria-label={`为“${displayName}”绑定${waterHeater ? '控制与传感器' : '子设备'}`} onClick={(event) => { event.preventDefault(); onBindChildren(entity); }}><Link2 size={14} /></button>}
                       <span className="entity-filter__kind">{entityKindLabel(entity)}</span>
-                      {bound.counts.has(entity.id) && <span className="entity-filter__tag">{bound.counts.get(entity.id)} 个子设备</span>}
+                      {bound.counts.has(entity.id) && <span className="entity-filter__tag">{bound.counts.get(entity.id)} {waterHeater ? '项控制 / 传感器' : '个子设备'}</span>}
                       {elsewhere && <span className="entity-filter__tag">在「{elsewhere}」</span>}
                       <code>{entity.id}</code>
                     </label>

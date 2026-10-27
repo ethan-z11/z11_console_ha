@@ -108,6 +108,13 @@ ALLOWED_SERVICES: dict[str, dict[str, dict[str, Callable[[Any], bool]]]] = {
         "set_fan_mode": {"fan_mode": _short_text},
         "set_swing_mode": {"swing_mode": _short_text},
     },
+    # 热水器：开关、设定热水温度、运行模式（燃气 / 电加热 / 热泵 / 节能 等）。
+    "water_heater": {
+        "turn_on": {},
+        "turn_off": {},
+        "set_temperature": {"temperature": _number(5, 95)},
+        "set_operation_mode": {"operation_mode": _short_text},
+    },
     "media_player": {
         "turn_on": {},
         "turn_off": {},
@@ -242,8 +249,18 @@ class ConsoleServer:
         settings = self.store.settings
         await self.upstream.configure(settings.ha_url, self.store.token(), settings.data_source == "live")
 
+    def bound_ids(self) -> set[str]:
+        """绑定项（子设备 / 热水器的控制与传感器）id：必须始终可见，宿主弹窗才能取到状态并控制。"""
+        return {child for children in self.store.custom.get("children", {}).values() for child in children}
+
+    def visible_ids_with_bound(self) -> set[str]:
+        settings = self.store.settings
+        base = visible_ids(self.discovered, settings.filter_mode, settings.blacklist, settings.whitelist)
+        return base | self.bound_ids()
+
     def catalogue(self) -> dict[str, Any]:
-        return filtered(self.discovered, self.visible)
+        # 绑定项必须在页面目录里，否则宿主弹窗取不到它们。
+        return filtered(self.discovered, self.visible | self.bound_ids())
 
     async def _broadcast_status(self) -> None:
         await self.broadcast(self.status_message())
@@ -315,11 +332,10 @@ class ConsoleServer:
 
     async def _apply_catalogue(self, catalogue: dict[str, Any]) -> None:
         """更新目录并按过滤设置计算可见实体；页面目录变化时推送，新可见的实体补发状态。"""
-        settings = self.store.settings
         before = self.catalogue()
         previous_visible = self.visible
         self.discovered = catalogue
-        self.visible = visible_ids(catalogue, settings.filter_mode, settings.blacklist, settings.whitelist)
+        self.visible = self.visible_ids_with_bound()
         after = self.catalogue()
         if after != before:
             await self.broadcast({"type": "catalogue", "catalogue": after})
@@ -1284,6 +1300,8 @@ class ConsoleServer:
         session = self._require_admin(request)
         body = await read_json(request)
         known_entities = {entity["id"] for entity in self.discovered["entities"]}
+        # 实体名称：用于判断 climate 宿主是否为热水器（名称含“热水器”）。
+        known_entity_names = {entity["id"]: entity.get("name", "") for entity in self.discovered["entities"]}
         # 电量 sensor 实体：用于校验 battery.excluded / names / highlightEntity。
         known_battery_entities = {entity["id"] for entity in self.discovered["entities"]
                                   if entity.get("domain") == "sensor" and entity.get("deviceClass") == "battery"}
@@ -1294,8 +1312,16 @@ class ConsoleServer:
         }
         old_occupancy = self.store.custom.get("occupancy", {})
         custom = clean_custom(body, known_entities=known_entities, known_metrics=known_metrics,
-                              known_battery_entities=known_battery_entities)
+                              known_battery_entities=known_battery_entities,
+                              known_entity_names=known_entity_names)
         self.store.save_custom(custom)
+        # 绑定项变化会影响可见实体：重算后补推目录与状态，宿主弹窗立即能拿到新绑定的控制 / 传感器。
+        previous_visible = self.visible
+        self.visible = self.visible_ids_with_bound()
+        await self.broadcast({"type": "catalogue", "catalogue": self.catalogue()})
+        added = {entity_id: self.upstream.states[entity_id] for entity_id in self.visible - previous_visible if entity_id in self.upstream.states}
+        if added:
+            await self.broadcast({"type": "entities", "changed": added})
         # 摄像头配置可能增删改：ONVIF 探测缓存作废，并按新列表启停运动监测。
         self.onvif.invalidate()
         # 运动截图总开关关闭时，配置变更不重启监测。

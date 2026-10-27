@@ -24,7 +24,10 @@ BINARY_CLASSES = {
     "moisture",
     "smoke", "gas", "carbon_monoxide",
 }
-CONTROL_DOMAINS = {"light", "climate", "media_player", "fan", "cover", "vacuum", "switch", "input_boolean"}
+CONTROL_DOMAINS = {"light", "climate", "media_player", "fan", "cover", "vacuum", "switch", "input_boolean", "water_heater"}
+# 热水器：可绑定到热水器卡片弹窗里的“控制按钮与传感器”实体域。
+WATER_HEATER_NAME_KEYWORD = "热水器"
+WATER_HEATER_BIND_DOMAINS = {"switch", "input_boolean", "binary_sensor", "sensor"}
 # 情景模式按钮可指向的“一键执行”类实体域：
 # scene / script 用 turn_on，button / input_button 用 press，automation 用 trigger。
 SCENE_DOMAINS = {"scene", "script", "button", "input_button", "automation"}
@@ -184,6 +187,21 @@ def build_catalogue(areas: list[dict[str, Any]], devices: list[dict[str, Any]], 
             "objectId": image_id.split(".", 1)[1],
             "name": str(image_attrs.get("friendly_name") or image_entry.get("name") or ""),
         })
+    # 热水器识别：water_heater 域，或名称含“热水器”的 climate 实体（部分集成把热水器挂在空调域下）。
+    # 与热水器同一 HA 设备的开关 / 传感器一并收录，供设置页绑定到热水器弹窗（如零冷水开关、燃烧状态）。
+    water_heater_device_ids: set[str] = set()
+    for entity_id, heater_state in states.items():
+        domain = entity_id.split(".", 1)[0]
+        if domain not in ("water_heater", "climate"):
+            continue
+        heater_entry = entries.get(entity_id) or {}
+        heater_attrs = heater_state.get("attributes") or {}
+        friendly = str(heater_attrs.get("friendly_name") or heater_entry.get("name") or "")
+        if domain == "water_heater" or WATER_HEATER_NAME_KEYWORD in friendly:
+            device_id = heater_entry.get("device_id")
+            if device_id:
+                water_heater_device_ids.add(device_id)
+
     entities: list[dict[str, Any]] = []
     for entity_id, state in states.items():
         domain = entity_id.split(".")[0]
@@ -199,7 +217,10 @@ def build_catalogue(areas: list[dict[str, Any]], devices: list[dict[str, Any]], 
         friendly = str(attributes.get("friendly_name") or entry.get("name") or entry.get("original_name") or entity_id)
         lunar = is_lunar_entity(domain, entity_id, friendly)
         device_name = device_names.get(entry.get("device_id"), "")
-        if not lunar and not relevant(domain, device_class, entity_id, friendly, device_name):
+        # 热水器同设备的控制 / 状态实体（开关、布尔助手、传感器）即使不符合常规收录规则也保留，供绑定使用。
+        heater_extra = domain in WATER_HEATER_BIND_DOMAINS and entry.get("device_id") in water_heater_device_ids
+        normal = relevant(domain, device_class, entity_id, friendly, device_name)
+        if not lunar and not heater_extra and not normal:
             continue
         area_id = entry.get("area_id") or device_area.get(entry.get("device_id"))
         if area_id not in area_names:
@@ -220,6 +241,9 @@ def build_catalogue(areas: list[dict[str, Any]], devices: list[dict[str, Any]], 
             # 规则：unavailable 的实体不进入“可加入房间”的可选范围（已在房间里的仍以离线卡显示）。
             "available": state.get("state") != "unavailable",
         }
+        if heater_extra and not lunar and not normal:
+            # 仅为热水器绑定而收录的实体：不出现在“添加设备”候选里，只能在绑定时选中。
+            entity["bindOnly"] = True
         if domain == "vacuum" and (map_image := find_map_image(entity_id, entry, images)):
             entity["mapEntityId"] = map_image
         if not lunar and (metrics := metric_options(domain, device_class, state.get("state"), attributes)):

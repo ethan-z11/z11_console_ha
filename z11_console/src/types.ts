@@ -40,6 +40,8 @@ export interface ClimateDevice extends BaseDevice {
   current?: number;
   mode: string;
   hvacModes: string[];
+  /** 热水器（water_heater 域，或名称含“热水器”的空调实体）：样式同空调，但不受夏季停用限制。 */
+  waterHeater?: boolean;
   fanMode?: string;
   fanModes?: string[];
   /** HA 空调的扫风模式（swing_mode）；不支持扫风时为 undefined。 */
@@ -131,7 +133,16 @@ export interface SwitchDevice extends BaseDevice {
   on: boolean;
 }
 
-export type Device = LightDevice | ClimateDevice | SensorDevice | SafetyDevice | MediaDevice | FanDevice | CoverDevice | VacuumDevice | SwitchDevice;
+/** 绑定在热水器宿主上的只读状态实体（如燃烧状态）：不单独成卡，只在热水器弹窗里显示。 */
+export interface BoundDevice extends BaseDevice {
+  kind: 'bound';
+  /** 原始 HA 域（binary_sensor / sensor 等）。 */
+  domain: string;
+  /** 弹窗里展示的状态文字（已换算单位）。 */
+  text: string;
+}
+
+export type Device = LightDevice | ClimateDevice | SensorDevice | SafetyDevice | MediaDevice | FanDevice | CoverDevice | VacuumDevice | SwitchDevice | BoundDevice;
 
 export interface Person {
   id: string;

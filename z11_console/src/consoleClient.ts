@@ -38,6 +38,8 @@ export interface CatalogueEntity {
   metrics?: MetricOption[];
   /** HA 实时状态是否可用；unavailable 的实体不允许加入房间（缺省按可用处理，兼容演示模式）。 */
   available?: boolean;
+  /** 仅为热水器绑定而收录的实体（如燃烧状态）：不能单独加入房间，只能在“设备绑定”里选中。 */
+  bindOnly?: boolean;
 }
 
 export type MetricName = 'temperature' | 'humidity';
