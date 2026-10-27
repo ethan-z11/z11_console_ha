@@ -364,7 +364,7 @@ function ChildBindPicker({ entities, custom, initialHostId, onSave, onClose }: {
           </select>
         </label>
         <div className="custom-add-row">
-          <input type="text" placeholder="手动输入子设备实体 ID，可用空格 / 逗号分隔多个" value={manual} onChange={(event) => { setManual(event.target.value); setHint(null); }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addManual(); } }} aria-label="手动输入子设备实体 ID" />
+          <input type="text" placeholder={`手动输入${hostIsWaterHeater ? '开关 / 传感器' : '子设备'}实体 ID，可用空格 / 逗号分隔多个`} value={manual} onChange={(event) => { setManual(event.target.value); setHint(null); }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addManual(); } }} aria-label={`手动输入${hostIsWaterHeater ? '开关 / 传感器' : '子设备'}实体 ID`} />
           <button type="button" className="small-button small-button--selected" onClick={addManual} disabled={!hostId}><Plus size={15} />添加</button>
         </div>
         {hint && <p className={hint.bad ? 'settings-message settings-message--error' : 'settings-message'} role="status">{hint.text}</p>}
@@ -1685,7 +1685,7 @@ function DevicePicker({ room, data, custom, searchId, onToggle, onEdit, onBindCh
                       <span className="entity-filter__name">{displayName}</span>
                       <button type="button" className="icon-button entity-filter__edit" title="自定义名称与图标" aria-label={`自定义“${displayName}”的名称与图标`} onClick={(event) => { event.preventDefault(); onEdit(entity); }}><Pencil size={14} /></button>
                       {canBind && Boolean(custom.assignments[entity.id]) && !bound.owners.has(entity.id) && <button type="button" className="icon-button entity-filter__edit" title={bound.counts.get(entity.id) ? `编辑${waterHeater ? '控制与传感器' : '子设备'}绑定（现有 ${bound.counts.get(entity.id)} 个）` : waterHeater ? '绑定控制与传感器' : '绑定子设备'} aria-label={`为“${displayName}”绑定${waterHeater ? '控制与传感器' : '子设备'}`} onClick={(event) => { event.preventDefault(); onBindChildren(entity); }}><Link2 size={14} /></button>}
-                      <span className="entity-filter__kind">{entityKindLabel(entity)}</span>
+                      <span className="entity-filter__kind">{waterHeater ? '热水器' : entityKindLabel(entity)}</span>
                       {bound.counts.has(entity.id) && <span className="entity-filter__tag">{bound.counts.get(entity.id)} {waterHeater ? '项控制 / 传感器' : '个子设备'}</span>}
                       {elsewhere && <span className="entity-filter__tag">在「{elsewhere}」</span>}
                       <code>{entity.id}</code>
