@@ -443,7 +443,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
     setSelectedClimateId(null);
   }
 
-  // 子设备绑定：宿主设备 id → 子设备列表（hidden），供灯 / 窗帘设置弹窗渲染大卡片。
+  // 子设备绑定：宿主设备 id → 子设备列表（hidden），供灯 / 窗帘大卡片与热水器 / 开关弹窗渲染绑定项。
   const childDevicesByHost = useMemo(() => {
     const map = new Map<string, Device[]>();
     for (const [hostId, childIds] of Object.entries(server.custom?.children ?? {})) {

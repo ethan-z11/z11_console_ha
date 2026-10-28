@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { Pause, Play, Power, SlidersHorizontal, Speaker, Tv, Volume2, X } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { releasePointerFocus } from '../focus';
-import { apiPath } from '../consoleApi';
 import type { MediaDevice, Room } from '../types';
 import { DelayTimerBlock } from './DelayTimer';
 import { TileFrame } from './TileFrame';
@@ -25,7 +24,7 @@ interface MediaPlayerCardProps {
 const statusLabels: Record<MediaDevice['status'], string> = { off: '已关闭', idle: '待机', playing: '播放中', paused: '已暂停', unknown: '状态未知' };
 
 export function MediaPlayerCard({ layout, media, room, onPower, onPlayPause, onVolume, onTimerSet, onTimerClear }: MediaPlayerCardProps) {
-  const { editing, hkTiles: hk } = layout;
+  const { editing } = layout;
   const Icon = media.mediaType === 'speaker' ? Speaker : Tv;
   const label = `${room.name}${media.name}`;
   const status = media.available ? statusLabels[media.status] : '设备不可用';
@@ -34,10 +33,10 @@ export function MediaPlayerCard({ layout, media, room, onPower, onPlayPause, onV
   const detailId = useId();
   const detailRef = useRef<HTMLDialogElement>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  // 缩略图背景：HA 站内相对路径经服务端代理（浏览器无 HA 令牌），外部 http(s) 直接加载；Ingress 下代理地址要带前缀。
+  // 缩略图背景：HA 站内相对路径经服务端代理（浏览器无 HA 令牌），外部 http(s) 直接加载。
   const art = media.picture
     ? media.picture.startsWith('/')
-      ? apiPath(`/api/media-picture?src=${encodeURIComponent(media.picture)}`)
+      ? `/api/media-picture?src=${encodeURIComponent(media.picture)}`
       : media.picture
     : undefined;
 
@@ -50,7 +49,7 @@ export function MediaPlayerCard({ layout, media, room, onPower, onPlayPause, onV
 
   return (
     <>
-    <TileFrame {...layout} className="media-card" active={playing} onLongPress={hk && media.available ? () => setDetailOpen(true) : undefined}>
+    <TileFrame {...layout} className="media-card" active={playing} onLongPress={media.available ? () => setDetailOpen(true) : undefined}>
       {art && <div className="media-card__art" style={{ '--art': `url("${art}")` } as CSSProperties} aria-hidden="true" />}
       <div className="media-card__header">
         <span className="media-card__icon"><Icon size={21} /></span>

@@ -36,7 +36,7 @@ export function ClimateCard({ layout, climate, room, onToggle, onAdjust, onOpenD
   const adjustDisabled = !climate.available || !climate.on || editing;
 
   return (
-    <TileFrame {...layout} active={climate.on} className={`climate-card climate-card--${tone}${locked ? ' climate-card--locked' : ''}`} onOpen={() => onOpenDetails(climate.id)}>
+    <TileFrame {...layout} active={climate.on} className={`climate-card climate-card--${tone}${locked ? ' climate-card--locked' : ''}`} onOpen={() => onOpenDetails(climate.id)} onLongPress={() => onOpenDetails(climate.id)}>
       <div className="tile__top">
         {/* 模式图标就是电源开关（与灯一致）：关闭为灰色，打开时按模式着色；右上角留给房间名。 */}
         <button type="button" className="climate-card__power" onClick={() => onToggle(climate.id)} disabled={!climate.available || editing} aria-label={`${climate.on ? '关闭' : '打开'}${label}`} aria-pressed={climate.on}>

@@ -167,13 +167,13 @@ export function LightCard({ layout, light, room, onToggle, onChange, childDevice
 
   return (
     <>
-    <TileFrame {...layout} hkTiles={hkSmall} style={glowStyle} className={`light-card light-card--${variant}${compact ? ' light-card--compact' : ''}`} active={light.on} onOpen={compact && light.available ? () => onToggle(light.id) : undefined} onLongPress={hkSmall && light.available ? () => setDetailOpen(true) : undefined}>
+    <TileFrame {...layout} hkTiles={hkSmall} style={glowStyle} className={`light-card light-card--${variant}${compact ? ' light-card--compact' : ''}`} active={light.on} onOpen={compact && light.available ? () => onToggle(light.id) : undefined} onLongPress={light.available ? () => setDetailOpen(true) : undefined}>
       <div className="tile__top">
         <button type="button" className="tile__power" onClick={() => onToggle(light.id)} disabled={disabled} aria-label={`${light.on ? '关闭' : '打开'}${room.name}${light.name}`} aria-pressed={light.on}><DeviceIcon size={21} /></button>
         {adjustable && !compact && <div className="light-card__identity"><span className="tile__room tile__room--inline" aria-hidden="true">{room.name}</span><span className="tile__name">{light.name}</span><span className="tile__note">{status}</span></div>}
         <span className="tile__room">{room.name}</span>
         {hasPalette && !compact && !hidePalette && <button ref={triggerRef} type="button" className="light-card__palette-trigger" style={{ '--light-selected-color': activeColorMode === 'color' ? light.color ?? '#ffffff' : '#fff3dd' } as CSSProperties} onClick={togglePalette} disabled={disabled} aria-label={`选择${room.name}${light.name}灯光颜色`} aria-haspopup="dialog" aria-expanded={paletteOpen} aria-controls={paletteOpen ? paletteId : undefined}><Palette size={19} /></button>}
-        {/* HomeKit 模式：齿轮隐藏，长按卡片弹出同样的设置弹窗（含子灯大卡片）。 */}
+        {/* 齿轮只在大卡且无障碍时不显示；长按卡片同样弹出设置弹窗（含子灯与延时关闭）。 */}
         {!compact && hasChildren && !editing && !hkSmall && <button type="button" className="light-card__settings" onClick={() => setDetailOpen(true)} disabled={!light.available} aria-label={`设置${room.name}${light.name}与它的子灯`} aria-haspopup="dialog" aria-controls={detailOpen ? detailId : undefined}><SlidersHorizontal size={18} /></button>}
       </div>
       {adjustable && !compact ? (

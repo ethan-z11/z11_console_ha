@@ -54,7 +54,7 @@ export function DeviceCard({ device, room, tile, actions, onOpenClimate, seasonL
   }
 
   if (device.kind === 'switch') {
-    return <SwitchCard layout={layout} device={device} room={room} onToggle={actions.toggle} onTimerSet={actions.setTimer} onTimerClear={actions.clearTimer} />;
+    return <SwitchCard layout={layout} device={device} room={room} extras={childDevices} onToggle={actions.toggle} onTimerSet={actions.setTimer} onTimerClear={actions.clearTimer} />;
   }
 
   return null;

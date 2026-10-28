@@ -91,10 +91,10 @@ METRIC_NAMES = ("temperature", "humidity")
 # 房间有人传感器：每个作用域（主页 home / 房间）最多选择的实体数；多个为“或”关系，任一触发即有人。
 CUSTOM_OCCUPANCY_PER_SCOPE = 10
 OCCUPANCY_DOMAINS = ("binary_sensor", "sensor")
-# 设备绑定：宿主可以是灯 / 窗帘 / 热水器。灯和窗帘只能绑同域子设备；
-# 热水器（water_heater 域，或名称含“热水器”的 climate 实体）绑开关与传感器。
-CHILD_HOST_DOMAINS = ("light", "cover", "water_heater", "climate")
-WATER_HEATER_BIND_DOMAINS = ("switch", "input_boolean", "binary_sensor", "sensor")
+# 设备绑定：宿主可以是灯 / 窗帘 / 热水器 / 开关。灯和窗帘只能绑同域子设备；
+# 热水器（water_heater 域，或名称含“热水器”的 climate 实体）与开关（switch / input_boolean）绑开关与传感器。
+CHILD_HOST_DOMAINS = ("light", "cover", "water_heater", "climate", "switch", "input_boolean")
+CONTROL_BIND_DOMAINS = ("switch", "input_boolean", "binary_sensor", "sensor")
 WATER_HEATER_NAME_KEYWORD = "热水器"
 # binary_sensor 统一按 on 判断；sensor 实体的状态值命中其中任一（小写比较）即视为有人。
 OCCUPIED_STATES = {"on", "home", "true", "1", "yes", "occupied", "present", "有人"}
@@ -354,8 +354,8 @@ def clean_custom(raw: Any, known_rooms: set[str] | None = None, known_entities: 
     if highlight:
         battery["highlightEntity"] = highlight
 
-    # 设备绑定：宿主（灯 / 窗帘 / 热水器）实体 id → 绑定实体 id 列表。
-    # 规则：宿主必须已发现；灯 / 窗帘只能绑同域子设备，热水器绑开关 / 布尔助手 / 传感器；
+    # 设备绑定：宿主（灯 / 窗帘 / 热水器 / 开关）实体 id → 绑定实体 id 列表。
+    # 规则：宿主必须已发现；灯 / 窗帘只能绑同域子设备，热水器与开关绑开关 / 布尔助手 / 传感器；
     # 不能绑自己、不能已是其他绑定的宿主或子设备（禁止链式 / 重复绑定）。
     # known_entity_names 为空时（加载历史文件）无法判断 climate 宿主是否为热水器，先放行，保存时会再校验。
     children_in = raw.get("children") if isinstance(raw.get("children"), dict) else {}
@@ -371,7 +371,9 @@ def clean_custom(raw: Any, known_rooms: set[str] | None = None, known_entities: 
         water_heater_host = host_domain == "water_heater" or (
             host_domain == "climate" and (known_entity_names is None or WATER_HEATER_NAME_KEYWORD in host_name)
         )
-        if host_domain not in CHILD_HOST_DOMAINS or (host_domain not in ("light", "cover") and not water_heater_host):
+        switch_host = host_domain in ("switch", "input_boolean")
+        control_host = water_heater_host or switch_host
+        if host_domain not in CHILD_HOST_DOMAINS or (host_domain not in ("light", "cover") and not control_host):
             continue
         if known_entities is not None and host_id not in known_entities:
             continue
@@ -382,8 +384,8 @@ def clean_custom(raw: Any, known_rooms: set[str] | None = None, known_entities: 
             if entity_id == host_id or entity_id in picked or entity_id in child_owner or entity_id in children:
                 continue
             child_domain = entity_id.split(".")[0]
-            if water_heater_host:
-                if child_domain not in WATER_HEATER_BIND_DOMAINS:
+            if control_host:
+                if child_domain not in CONTROL_BIND_DOMAINS:
                     continue
             elif child_domain != host_domain:
                 continue

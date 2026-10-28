@@ -77,7 +77,7 @@ export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosi
 
   return (
     <>
-    <TileFrame {...layout} hkTiles={hkSmall} className={`cover-card${compact ? ' cover-card--compact' : ''}`} active={active} onOpen={compact && cover.available ? toggleCover : undefined} onLongPress={hkSmall && cover.available ? () => setDetailOpen(true) : undefined}>
+    <TileFrame {...layout} hkTiles={hkSmall} className={`cover-card${compact ? ' cover-card--compact' : ''}`} active={active} onOpen={compact && cover.available ? toggleCover : undefined} onLongPress={cover.available ? () => setDetailOpen(true) : undefined}>
       {!compact ? (
         <>
           <div className="tile__top">

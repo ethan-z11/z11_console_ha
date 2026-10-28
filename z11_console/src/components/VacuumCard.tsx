@@ -54,8 +54,8 @@ export function VacuumCard({ layout, vacuum, room, onToggle, onStart, onPause, o
   useEffect(() => { if (disabled) setDetailOpen(false); }, [disabled]);
   useEffect(() => { if (detailOpen && detailRef.current && !detailRef.current.open) detailRef.current.showModal(); }, [detailOpen]);
 
-  // 地图只在小卡弹窗中显示（大卡不放地图），弹窗打开时才拉取。
-  const mapActive = Boolean(vacuum.mapEntity) && compact && detailOpen;
+  // 地图只在设置弹窗里显示（大卡不放地图），弹窗打开时才拉取。
+  const mapActive = Boolean(vacuum.mapEntity) && detailOpen;
   useEffect(() => {
     if (!mapActive) return;
     const timer = window.setInterval(() => setTick((value) => value + 1), busy ? MAP_REFRESH_CLEANING_MS : MAP_REFRESH_IDLE_MS);
@@ -96,7 +96,7 @@ export function VacuumCard({ layout, vacuum, room, onToggle, onStart, onPause, o
 
   return (
     <>
-    <TileFrame {...layout} className={`vacuum-card${compact ? ' vacuum-card--compact' : ''}`} active={busy} onOpen={compact && vacuum.available ? () => onToggle(vacuum.id) : undefined}>
+    <TileFrame {...layout} className={`vacuum-card${compact ? ' vacuum-card--compact' : ''}`} active={busy} onOpen={compact && vacuum.available ? () => onToggle(vacuum.id) : undefined} onLongPress={vacuum.available ? () => setDetailOpen(true) : undefined}>
       <div className="tile__top">
         <button type="button" className="tile__power" onClick={() => onToggle(vacuum.id)} disabled={disabled} aria-label={`${busy ? '暂停' : '开始清扫'}${room.name}${vacuum.name}`} aria-pressed={busy}><DeviceIcon size={21} /></button>
         {!compact && <div className="light-card__identity"><span className="tile__room tile__room--inline" aria-hidden="true">{room.name}</span><span className="tile__name">{vacuum.name}</span><span className={`tile__note${vacuum.status === 'error' ? ' tile__note--alert' : ''}`}>{statusText}</span></div>}
@@ -111,7 +111,7 @@ export function VacuumCard({ layout, vacuum, room, onToggle, onStart, onPause, o
         {!editing && <button type="button" className="light-card__settings" onClick={() => setDetailOpen(true)} disabled={!vacuum.available} aria-label={`设置${room.name}${vacuum.name}清扫、回充和档位`} aria-haspopup="dialog" aria-controls={detailOpen ? detailId : undefined}><SlidersHorizontal size={18} /></button>}
       </div>}
     </TileFrame>
-    {compact && detailOpen && createPortal(<dialog ref={detailRef} id={detailId} className="light-detail-dialog" aria-labelledby={`${detailId}-title`} onClose={() => { setDetailOpen(false); releasePointerFocus(); }} onCancel={() => setDetailOpen(false)} onClick={(e) => { if (e.target === e.currentTarget) setDetailOpen(false); }}>
+    {detailOpen && createPortal(<dialog ref={detailRef} id={detailId} className="light-detail-dialog" aria-labelledby={`${detailId}-title`} onClose={() => { setDetailOpen(false); releasePointerFocus(); }} onCancel={() => setDetailOpen(false)} onClick={(e) => { if (e.target === e.currentTarget) setDetailOpen(false); }}>
       <div className="light-detail-dialog__heading"><div><small>{room.name}</small><h2 id={`${detailId}-title`}>{vacuum.name}</h2></div><button type="button" onClick={() => setDetailOpen(false)} autoFocus aria-label="关闭扫地机设置"><X size={20} /></button></div>
       <div className="vacuum-card__dialog">
         <div className="vacuum-card__map vacuum-card__map--dialog">

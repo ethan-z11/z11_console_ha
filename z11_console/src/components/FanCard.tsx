@@ -85,7 +85,7 @@ export function FanCard({ layout, fan, room, onToggle, onSpeed, onPreset, onOsci
 
   return (
     <>
-    <TileFrame {...layout} hkTiles={hkSmall} className={`light-card fan-card${compact ? ' light-card--compact fan-card--compact' : ''}`} active={fan.on} onOpen={compact && fan.available ? () => setDetailOpen(true) : undefined} onLongPress={hkSmall && hasDialog && fan.available ? () => setDetailOpen(true) : undefined}>
+    <TileFrame {...layout} hkTiles={hkSmall} className={`light-card fan-card${compact ? ' light-card--compact fan-card--compact' : ''}`} active={fan.on} onOpen={compact && fan.available ? () => setDetailOpen(true) : undefined} onLongPress={fan.available ? () => setDetailOpen(true) : undefined}>
       <div className="tile__top">
         <button type="button" className="tile__power" onClick={() => onToggle(fan.id)} disabled={disabled} aria-label={`${fan.on ? '关闭' : '打开'}${room.name}${fan.name}`} aria-pressed={fan.on}><DeviceIcon size={21} /></button>
         {!compact && <div className="light-card__identity"><span className="tile__room tile__room--inline" aria-hidden="true">{room.name}</span><span className="tile__name">{fan.name}</span><span className="tile__note">{status}</span></div>}
@@ -105,7 +105,7 @@ export function FanCard({ layout, fan, room, onToggle, onSpeed, onPreset, onOsci
         {compact && !editing && !hkSmall && <button type="button" className="light-card__settings" onClick={() => setDetailOpen(true)} disabled={!fan.available} aria-label={`设置${room.name}${fan.name}风速、摇头和风类`} aria-haspopup="dialog" aria-controls={detailOpen ? detailId : undefined}><SlidersHorizontal size={18} /></button>}
       </div>}
     </TileFrame>
-    {compact && detailOpen && createPortal(<dialog ref={detailRef} id={detailId} className="light-detail-dialog" aria-labelledby={`${detailId}-title`} onClose={() => { setDetailOpen(false); releasePointerFocus(); }} onCancel={() => setDetailOpen(false)} onClick={(e) => { if (e.target === e.currentTarget) setDetailOpen(false); }}>
+    {detailOpen && createPortal(<dialog ref={detailRef} id={detailId} className="light-detail-dialog" aria-labelledby={`${detailId}-title`} onClose={() => { setDetailOpen(false); releasePointerFocus(); }} onCancel={() => setDetailOpen(false)} onClick={(e) => { if (e.target === e.currentTarget) setDetailOpen(false); }}>
       <div className="light-detail-dialog__heading"><div><small>{room.name}</small><h2 id={`${detailId}-title`}>{fan.name}</h2></div><button type="button" onClick={() => setDetailOpen(false)} autoFocus aria-label="关闭风扇设置"><X size={20} /></button></div>
       <div className="fan-card__dialog-control">
         {adjustable && <div className="light-detail-dialog__control"><div><label htmlFor={`${detailId}-speed`}>风速</label><output>{percentage}%</output></div>

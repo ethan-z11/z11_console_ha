@@ -219,8 +219,8 @@ function toBound(base: BoundDevice, state: EntityState): BoundDevice {
   return { ...base, available: true, text };
 }
 
-/** 可绑定到热水器的“控制按钮与传感器”实体域。 */
-export const WATER_HEATER_BIND_DOMAINS = new Set(['switch', 'input_boolean', 'binary_sensor', 'sensor']);
+/** 可绑定到热水器 / 开关宿主的“控制按钮与传感器”实体域（开关可点按，传感器只读显示）。 */
+export const CONTROL_BIND_DOMAINS = new Set(['switch', 'input_boolean', 'binary_sensor', 'sensor']);
 
 /** 热水器识别：water_heater 域，或名称含“热水器”的 climate 实体（部分集成把热水器挂在空调域下）。 */
 export function isWaterHeaterEntity(entity: Pick<CatalogueEntity, 'domain' | 'name'>): boolean {
@@ -431,17 +431,20 @@ export function liveHome(catalogue: Catalogue | null, states: States, previous: 
       continue;
     }
     // 绑定项：不进入房间列表，只在宿主设置弹窗里显示。灯 / 窗帘子设备类型必须一致；
-    // 热水器宿主则绑定开关 / 布尔助手（可点按）以及传感器（只读状态，如燃烧状态）。
+    // 热水器与开关宿主则绑定开关 / 布尔助手（可点按）以及传感器（只读状态，如燃烧状态、功率）。
     const boundHost = childToHost.get(entity.id);
     if (boundHost !== undefined) {
       const host = entityById.get(boundHost);
       const waterHeaterHost = Boolean(host && isWaterHeaterEntity(host));
-      if (waterHeaterHost) {
-        if (!WATER_HEATER_BIND_DOMAINS.has(entity.domain)) continue;
+      // 开关卡片（switch / input_boolean）同样可以绑定控制按钮与传感器。
+      const switchHost = Boolean(host && (host.domain === 'switch' || host.domain === 'input_boolean'));
+      const controlHost = waterHeaterHost || switchHost;
+      if (controlHost) {
+        if (!CONTROL_BIND_DOMAINS.has(entity.domain)) continue;
       } else if (entity.domain !== 'light' && entity.domain !== 'cover') continue;
       const hostRoom = custom.assignments[boundHost];
       const childRoom = hostRoom && roomIds.has(hostRoom) ? hostRoom : '';
-      const base: Device | null = waterHeaterHost && (entity.domain === 'binary_sensor' || entity.domain === 'sensor')
+      const base: Device | null = controlHost && (entity.domain === 'binary_sensor' || entity.domain === 'sensor')
         ? { id: entity.id, roomId: childRoom, name: entity.name, available: false, kind: 'bound', domain: entity.domain, text: '' }
         : baseDevice(entity, childRoom, state);
       if (!base) continue;

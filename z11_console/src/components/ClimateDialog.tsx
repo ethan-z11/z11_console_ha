@@ -4,6 +4,7 @@ import { climateTone } from '../appearance';
 import { autoFirst, fanModeLabel, hvacModeLabel } from '../climate';
 import { openModalQuietly, releasePointerFocus } from '../focus';
 import type { ClimateDevice, Device, DeviceActions, Room } from '../types';
+import { BoundGrid } from './BoundGrid';
 import { DelayTimerBlock } from './DelayTimer';
 
 interface ClimateDialogProps {
@@ -78,26 +79,7 @@ export function ClimateDialog({ climate, room, actions, extras, onClose }: Clima
             </div>
           </div>
         )}
-        {extras && extras.length > 0 && (
-          <div className="climate-detail__group">
-            <h3>控制与传感器</h3>
-            <div className="bound-grid">
-              {[...extras].sort((a, b) => (a.kind === 'switch' ? 0 : 1) - (b.kind === 'switch' ? 0 : 1)).map((extra) => extra.kind === 'switch'
-                ? (
-                  <button key={extra.id} type="button" role="switch" aria-checked={extra.on} className={`bound-item bound-item--control${extra.on ? ' bound-item--on' : ''}${extra.available ? '' : ' bound-item--muted'}`} onClick={() => actions.toggle(extra.id)} disabled={!extra.available}>
-                    <span className="bound-item__name">{extra.name}</span>
-                    <span className="bound-item__switch" aria-hidden="true"><i /></span>
-                  </button>
-                )
-                : (
-                  <div key={extra.id} className={`bound-item${extra.available ? '' : ' bound-item--muted'}`}>
-                    <span className="bound-item__name">{extra.name}</span>
-                    <span className="bound-item__value">{extra.kind === 'bound' ? extra.text : ''}</span>
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
+        {extras && extras.length > 0 && <BoundGrid devices={extras} onToggle={actions.toggle} />}
         <DelayTimerBlock device={climate} armed={climate.available && climate.on} onSet={actions.setTimer} onClear={actions.clearTimer} />
       </>}
     </dialog>
