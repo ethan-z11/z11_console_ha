@@ -529,7 +529,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
   return (
     <div className={compactActive ? 'app-shell app-shell--compact' : 'app-shell'}>
       <SideNav home={home} homeTitle={homeTitle} current={page === 'room' ? { roomId: selectedRoom.id } : page} now={now} onHome={openHome} onOpenRoom={openRoom} onSettings={requestSettings} onEditRooms={canControl ? () => setRoomOrderOpen(true) : undefined} onOpenMusic={musicUrl ? openMusic : undefined} people={server.status?.people} occupancy={occupancy} brandTitle={server.status?.brandTitle} />
-      <header className={`hero${page === 'home' ? ' hero--home' : ''}${page === 'settings' ? ' hero--settings' : ''}${heroTone ? ` hero--weather weather--${heroTone}` : ''}`}>
+      <header className={`hero${page === 'home' ? ' hero--home' : ''}${page === 'settings' ? ' hero--settings' : ''}${page === 'music' ? ' hero--music' : ''}${heroTone ? ` hero--weather weather--${heroTone}` : ''}`}>
         {page === 'room' && <RoomScene key={selectedRoom.id} room={selectedRoom} lit={selectedRoomLitCount > 0} />}
         <div className="hero__top">
           <span className="hero__brand">{homeGreeting(now)}</span>
@@ -539,16 +539,19 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
         </div>
         <div className={`hero__body ${enterClass}`} key={pageKey}>
           <div className="hero__main">
-            <div className="hero__title">
-              <div>
-                <h1>{page === 'room' ? selectedRoom.name : page === 'settings' ? '设置' : page === 'music' ? '音乐' : <span className="datetime"><span className="datetime__time">{formatTime(now)}</span> <span className="datetime__part">{homeClockParts.monthDay}</span> <span className="datetime__part">{homeClockParts.weekday}</span></span>}{page === 'home' && season && <span className={`season-badge season-badge--${season}`} title="季节规则（设置 → 自动化）">{season === 'summer' ? <Sun size={14} /> : <Snowflake size={14} />}{season === 'summer' ? '夏季' : '冬季'}</span>}{occupancyKnown && occupancyScope && <OccupancyBadge occupied={occupancy?.[occupancyScope] === true} />}</h1>
-                {page === 'home'
-                  ? (homeSubline
-                    ? <p><button type="button" className="hero__subline-button" onClick={() => setAlmanacOpen(true)} title="点击查看农历详情">{homeSubline}</button></p>
-                    : null)
-                  : <p>{page === 'room' ? '房间状态与设备控制' : page === 'settings' ? '管理密码、Home Assistant 连接与控制权限' : '内嵌音乐界面'}</p>}
+            {/* 音乐页不显示标题区，把垂直空间全部让给内嵌网页。 */}
+            {page !== 'music' && (
+              <div className="hero__title">
+                <div>
+                  <h1>{page === 'room' ? selectedRoom.name : page === 'settings' ? '设置' : <span className="datetime"><span className="datetime__time">{formatTime(now)}</span> <span className="datetime__part">{homeClockParts.monthDay}</span> <span className="datetime__part">{homeClockParts.weekday}</span></span>}{page === 'home' && season && <span className={`season-badge season-badge--${season}`} title="季节规则（设置 → 自动化）">{season === 'summer' ? <Sun size={14} /> : <Snowflake size={14} />}{season === 'summer' ? '夏季' : '冬季'}</span>}{occupancyKnown && occupancyScope && <OccupancyBadge occupied={occupancy?.[occupancyScope] === true} />}</h1>
+                  {page === 'home'
+                    ? (homeSubline
+                      ? <p><button type="button" className="hero__subline-button" onClick={() => setAlmanacOpen(true)} title="点击查看农历详情">{homeSubline}</button></p>
+                      : null)
+                    : <p>{page === 'room' ? '房间状态与设备控制' : '管理密码、Home Assistant 连接与控制权限'}</p>}
+                </div>
               </div>
-            </div>
+            )}
             {compactActive && page === 'home' ? (
               <div className="hero__pills-row">
                 {heroActions}
@@ -565,7 +568,7 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
         {page === 'home' && <WeatherHero weather={weather} now={now} onOpen={() => setWeatherOpen(true)} />}
       </header>
 
-      <main className={`main-content ${enterClass}`} key={pageKey}>
+      <main className={`main-content${page === 'music' ? ' main-content--music' : ''} ${enterClass}`} key={pageKey}>
         {page === 'home' && (
           <>
             <div className="home-date-card" aria-hidden="true">

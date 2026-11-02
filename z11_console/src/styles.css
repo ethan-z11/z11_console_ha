@@ -331,9 +331,10 @@ strong { font-weight: 600; }
 @keyframes presence-blink { 0%, 100% { opacity: 1; } 50% { opacity: .15; } }
 
 /* ---------- 音乐页：内嵌网页（iframe） ---------- */
-.music-page { display: flex; flex-direction: column; gap: 10px; height: clamp(420px, calc(100dvh - 310px), 1200px); }
-.music-page__bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.music-page__title { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--text-2); }
+/* 页头标题区已隐藏，页面占满内容区剩余高度，iframe 随窗口高度自适应。 */
+.music-page { display: flex; flex-direction: column; min-height: 0; }
+.main-content--music { display: flex; min-height: 0; padding-top: 10px; padding-bottom: 12px; }
+.main-content--music .music-page { flex: 1; }
 .music-page__frame { flex: 1; min-height: 0; width: 100%; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
 
 /* ---------- 摄像头（RTSP → MJPEG） ---------- */
@@ -1245,6 +1246,8 @@ strong { font-weight: 600; }
 .hero { min-height: 232px; }
 /* 设置页没有状态标签，也不参与上下滑动切换，页头按内容高度即可。 */
 .hero.hero--settings { min-height: 0; }
+/* 音乐页页头只保留顶部操作行：标题区隐藏、最小高度取消，内嵌网页整体上移。 */
+.hero.hero--music { min-height: 0; padding-bottom: 0; }
 .hero--home .hero__top { position: relative; z-index: 2; }
 /* 天气卡宽度用 vw 精确表达（页头宽 = 视口 - 侧栏 196px），hero__main 预留同宽右距 + 间隙；
    状态药丸再多也只在左列换行，不钻到天气卡下方与湿度/风力文字重叠。 */
